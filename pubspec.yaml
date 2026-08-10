@@ -1,0 +1,41 @@
+name: coffee_shop
+description: A simple coffee shop management MVP
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Supabase for backend
+  supabase_flutter: ^1.10.0
+  
+  # For environment variables
+  flutter_dotenv: ^5.1.0
+  
+  # For state management
+  provider: ^6.0.5
+  
+  # For QR code generation
+  qr_flutter: ^4.1.0
+  
+  # For UUID generation
+  uuid: ^3.0.7
+  
+  # For date formatting
+  intl: ^0.18.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+  
+  # This tells Flutter to include your .env file in the build
+  assets:
+    - .env
