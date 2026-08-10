@@ -16,22 +16,14 @@ class SupabaseService {
   /// Gets all available products from the database
   Future<List<Product>> getProducts() async {
     try {
-      // Get data from Supabase
       final response = await _client
           .from('products')
           .select()
           .eq('is_available', true)
           .order('name');
 
-      // DEBUG: Print what we got
-      print('Products response: $response');
-      print('Response type: ${response.runtimeType}');
-
-      // Convert the response to a list of Products
-      // The response is a List<dynamic> where each item is a Map<String, dynamic>
       final List<Product> products = [];
       for (var item in response) {
-        // Cast to Map<String, dynamic> explicitly
         final map = item as Map<String, dynamic>;
         products.add(Product.fromMap(map));
       }
@@ -54,7 +46,6 @@ class SupabaseService {
 
       if (response == null) return null;
 
-      // Cast to Map<String, dynamic>
       final map = response as Map<String, dynamic>;
       return Product.fromMap(map);
     } catch (e) {
@@ -70,19 +61,11 @@ class SupabaseService {
   /// Gets all tables from the database
   Future<List<CoffeeTable>> getTables() async {
     try {
-      // Get data from Supabase
       final response =
           await _client.from('tables').select().order('table_number');
 
-      // DEBUG: Print what we got
-      print('Tables response: $response');
-      print('Response type: ${response.runtimeType}');
-
-      // Convert the response to a list of CoffeeTables
-      // The response is a List<dynamic> where each item is a Map<String, dynamic>
       final List<CoffeeTable> tables = [];
       for (var item in response) {
-        // Cast to Map<String, dynamic> explicitly
         final map = item as Map<String, dynamic>;
         tables.add(CoffeeTable.fromMap(map));
       }
@@ -130,7 +113,6 @@ class SupabaseService {
   /// Creates a new order for a table
   Future<Order> createOrder(int tableId) async {
     try {
-      // Insert the new order
       final response = await _client
           .from('orders')
           .insert({
@@ -141,7 +123,6 @@ class SupabaseService {
           .select()
           .single();
 
-      // Update the table status to 'occupied'
       await updateTableStatus(tableId, 'occupied');
 
       final map = response as Map<String, dynamic>;
@@ -197,14 +178,12 @@ class SupabaseService {
             .from('order_items')
             .update({'quantity': newQuantity}).eq('id', existingItems['id']);
 
-        // Get the updated item
         final updatedItem = await _client
             .from('order_items')
             .select()
             .eq('id', existingItems['id'])
             .single();
 
-        // Update the order total
         await _updateOrderTotal(orderId);
 
         final map = updatedItem as Map<String, dynamic>;
@@ -223,7 +202,6 @@ class SupabaseService {
           .select()
           .single();
 
-      // 4. Update the order total
       await _updateOrderTotal(orderId);
 
       final map = response as Map<String, dynamic>;
@@ -319,7 +297,6 @@ class SupabaseService {
         final map = itemData as Map<String, dynamic>;
         final item = OrderItem.fromMap(map);
 
-        // Get the product details for this item
         final product = await getProductById(item.productId);
         if (product != null) {
           items.add(OrderItem(
@@ -344,6 +321,95 @@ class SupabaseService {
     } catch (e) {
       print('Error in getCompleteOrder: $e');
       throw Exception('Failed to get complete order: $e');
+    }
+  }
+
+  // ============================================================
+  // ADDITIONAL METHODS FOR ORDERS AND REPORTS
+  // ============================================================
+
+  /// Get all orders with their table information
+  /// Get all orders with their table information
+  Future<List<Map<String, dynamic>>> getAllOrders() async {
+    try {
+      final response = await _client
+          .from('orders')
+          .select('*, tables(*)')
+          .order('created_at', ascending: false);
+
+      // Explicitly cast the response to List<Map<String, dynamic>>
+      final List<Map<String, dynamic>> orders = [];
+      for (var item in response) {
+        orders.add(item as Map<String, dynamic>);
+      }
+      return orders;
+    } catch (e) {
+      print('Error in getAllOrders: $e');
+      throw Exception('Failed to fetch orders: $e');
+    }
+  }
+
+  /// Get total number of orders
+  Future<int> getTotalOrdersCount() async {
+    try {
+      final response = await _client.from('orders').select('id');
+
+      return response.length;
+    } catch (e) {
+      print('Error in getTotalOrdersCount: $e');
+      return 0;
+    }
+  }
+
+  /// Get today's orders count
+  Future<int> getTodayOrdersCount() async {
+    try {
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      final response =
+          await _client.from('orders').select('id').gte('created_at', today);
+
+      return response.length;
+    } catch (e) {
+      print('Error in getTodayOrdersCount: $e');
+      return 0;
+    }
+  }
+
+  /// Get total revenue from closed orders
+  Future<double> getTotalRevenue() async {
+    try {
+      final response =
+          await _client.from('orders').select('total').eq('status', 'closed');
+
+      double total = 0;
+      for (var order in response) {
+        total += (order['total'] as num).toDouble();
+      }
+      return total;
+    } catch (e) {
+      print('Error in getTotalRevenue: $e');
+      return 0;
+    }
+  }
+
+  /// Get all orders with items for a specific table
+  /// Get all orders with items for a specific table
+  Future<List<Map<String, dynamic>>> getOrdersByTable(int tableId) async {
+    try {
+      final response = await _client
+          .from('orders')
+          .select('*, tables(*)')
+          .eq('table_id', tableId)
+          .order('created_at', ascending: false);
+
+      final List<Map<String, dynamic>> orders = [];
+      for (var item in response) {
+        orders.add(item as Map<String, dynamic>);
+      }
+      return orders;
+    } catch (e) {
+      print('Error in getOrdersByTable: $e');
+      throw Exception('Failed to fetch orders: $e');
     }
   }
 }

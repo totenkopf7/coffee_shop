@@ -1,4 +1,7 @@
-/// CoffeeTable model - represents a table in the coffee shop
+import 'dart:ui';
+
+import 'package:flutter/material.dart';
+
 class CoffeeTable {
   final int id;
   final int tableNumber;
@@ -12,7 +15,6 @@ class CoffeeTable {
     this.createdAt,
   });
 
-  /// Creates a table from Supabase data
   factory CoffeeTable.fromMap(Map<String, dynamic> map) {
     return CoffeeTable(
       id: map['id'] as int,
@@ -24,7 +26,6 @@ class CoffeeTable {
     );
   }
 
-  /// Converts back to map for database operations
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -35,5 +36,6 @@ class CoffeeTable {
 
   bool get isOccupied => status == 'occupied';
   bool get isAvailable => status == 'available';
-  String get statusDisplay => status.toUpperCase();
+  String get statusDisplay => isOccupied ? 'TAKEN' : 'AVAILABLE';
+  Color get statusColor => isOccupied ? Colors.red : Colors.green;
 }
