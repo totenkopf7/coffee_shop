@@ -1,6 +1,5 @@
 import 'product.dart';
 
-/// OrderItem model - represents a single item in an order
 class OrderItem {
   final String id;
   final String orderId;
@@ -20,7 +19,6 @@ class OrderItem {
     this.product,
   });
 
-  /// Creates an order item from Supabase data
   factory OrderItem.fromMap(Map<String, dynamic> map) {
     return OrderItem(
       id: map['id'] as String,

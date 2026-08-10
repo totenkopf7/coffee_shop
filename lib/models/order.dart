@@ -1,6 +1,5 @@
 import 'order_item.dart';
 
-/// Order model - represents a customer's order
 class Order {
   final String id;
   final int tableId;
@@ -20,7 +19,6 @@ class Order {
     this.items = const [],
   });
 
-  /// Creates an order from Supabase data
   factory Order.fromMap(Map<String, dynamic> map) {
     return Order(
       id: map['id'] as String,

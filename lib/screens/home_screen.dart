@@ -34,6 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final service = SupabaseService();
       final tables = await service.getTables();
+      print('📊 Loaded ${tables.length} tables');
+      for (var table in tables) {
+        print('  Table ${table.tableNumber}: ${table.status}');
+      }
       setState(() {
         _tables = tables;
         _isLoading = false;
@@ -47,21 +51,38 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _refreshTables() {
+    print('🔄 Refreshing tables...');
     _loadTables();
+  }
+
+  String _getStatusSummary() {
+    final total = _tables.length;
+    final taken = _tables.where((t) => t.isOccupied).length;
+    final available = total - taken;
+    return '$taken taken · $available available';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          '☕ Coffee Shop',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '☕ Coffee Shop',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (_tables.isNotEmpty)
+              Text(
+                _getStatusSummary(),
+                style: const TextStyle(fontSize: 12, color: Colors.white70),
+              ),
+          ],
         ),
         backgroundColor: Colors.brown[800],
         foregroundColor: Colors.white,
         actions: [
-          // Refresh Button
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _refreshTables,
@@ -69,7 +90,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      // Add the drawer
       drawer: _buildDrawer(),
       body: _buildBody(),
     );
@@ -79,7 +99,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return Drawer(
       child: Column(
         children: [
-          // Drawer Header
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(24),
@@ -128,7 +147,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          // Navigation Items
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -137,7 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.dashboard,
                   title: 'Dashboard',
                   onTap: () {
-                    Navigator.pop(context); // Close drawer
+                    Navigator.pop(context);
                   },
                   isSelected: true,
                 ),
@@ -200,7 +218,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          // Footer
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -338,8 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
-    if (result == true) {
-      _refreshTables();
-    }
+    print('🔄 Returning from TableScreen, result: $result');
+    _refreshTables();
   }
 }

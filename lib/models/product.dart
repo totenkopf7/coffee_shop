@@ -1,4 +1,3 @@
-/// Product model - represents an item on the menu
 class Product {
   final int id;
   final String name;
@@ -20,7 +19,6 @@ class Product {
     this.createdAt,
   });
 
-  /// Creates a Product from a database map/row
   factory Product.fromMap(Map<String, dynamic> map) {
     return Product(
       id: map['id'] as int,

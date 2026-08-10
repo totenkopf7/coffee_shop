@@ -36,20 +36,12 @@ class MyApp extends StatelessWidget {
         useMaterial3: false,
       ),
       debugShowCheckedModeBanner: false,
-      // This is the key - use the route information from the browser
       onGenerateInitialRoutes: (String initialRoute) {
-        // Get the full URL from the browser
         final Uri currentUri = Uri.base;
         final String path = currentUri.path;
         final String query = currentUri.query;
 
-        print('📍 Full URL: $currentUri');
-        print('📍 Path: $path');
-        print('📍 Query: $query');
-
-        // If the path contains 'menu', show the menu
         if (path.contains('menu')) {
-          // Extract table ID from query
           int? tableId;
           if (query.isNotEmpty) {
             final params = query.split('&');
@@ -60,8 +52,6 @@ class MyApp extends StatelessWidget {
               }
             }
           }
-
-          print('📱 Showing menu with table: $tableId');
           return [
             MaterialPageRoute(
               builder: (context) => MenuScreen(tableId: tableId),
@@ -69,15 +59,12 @@ class MyApp extends StatelessWidget {
           ];
         }
 
-        // Otherwise show home
-        print('🏠 Showing home screen');
         return [
           MaterialPageRoute(
             builder: (context) => const HomeScreen(),
           ),
         ];
       },
-      // Fallback for any other routes
       onUnknownRoute: (settings) {
         return MaterialPageRoute(
           builder: (context) => const HomeScreen(),

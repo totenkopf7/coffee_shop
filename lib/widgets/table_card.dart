@@ -25,32 +25,29 @@ class TableCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: table.isOccupied ? Colors.red[50] : Colors.white,
+            color: table.cardBackgroundColor,
             border: Border.all(
-              color: table.isOccupied ? Colors.red[300]! : Colors.grey[300]!,
+              color: table.cardBorderColor,
               width: 2,
             ),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Table number
               Text(
                 '${table.tableNumber}',
                 style: TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.bold,
-                  color: table.isOccupied ? Colors.red[800] : Colors.brown[800],
+                  color: table.tableNumberColor,
                 ),
               ),
               const SizedBox(height: 8),
-
-              // Status indicator - Changed to RED for occupied
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: table.isOccupied ? Colors.red[100] : Colors.green[100],
+                  color: table.statusBackgroundColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -61,29 +58,27 @@ class TableCard extends StatelessWidget {
                       height: 8,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: table.isOccupied ? Colors.red : Colors.green,
+                        color: table.statusColor,
                       ),
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      table.isOccupied ? 'TAKEN' : 'AVAILABLE',
+                      table.statusDisplay,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: table.isOccupied
-                            ? Colors.red[800]
-                            : Colors.green[800],
+                        color: table.statusColor,
                       ),
                     ),
                   ],
                 ),
               ),
-
               const Spacer(),
-
               Icon(
                 table.isOccupied ? Icons.person : Icons.person_outline,
-                color: table.isOccupied ? Colors.red[300] : Colors.grey[400],
+                color: table.isOccupied
+                    ? Colors.red.shade300
+                    : Colors.grey.shade400,
                 size: 24,
               ),
             ],

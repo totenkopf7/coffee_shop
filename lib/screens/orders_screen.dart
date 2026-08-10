@@ -38,10 +38,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
       for (var orderData in response) {
         final order = Order.fromMap(orderData);
         final table = CoffeeTable.fromMap(orderData['tables']);
-        
+
         // Get items for this order
         final items = await _service.getOrderItems(order.id);
-        
+
         processedOrders.add({
           'order': order,
           'table': table,
@@ -155,12 +155,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: order.isOpen ? Colors.green[100] : Colors.grey[200],
+                color:
+                    order.isOpen ? Colors.green.shade100 : Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 order.isOpen ? Icons.access_time : Icons.check_circle,
-                color: order.isOpen ? Colors.green[700] : Colors.grey[600],
+                color:
+                    order.isOpen ? Colors.green.shade700 : Colors.grey.shade600,
                 size: 20,
               ),
             ),
@@ -172,9 +174,33 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: order.isOpen ? Colors.green[100] : Colors.grey[300],
+                    color: table.isOccupied
+                        ? Colors.red.shade100
+                        : Colors.green.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    table.isOccupied ? 'TAKEN' : 'AVAILABLE',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: table.isOccupied
+                          ? Colors.red.shade800
+                          : Colors.green.shade800,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: order.isOpen
+                        ? Colors.green.shade100
+                        : Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -182,7 +208,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: order.isOpen ? Colors.green[800] : Colors.grey[700],
+                      color: order.isOpen
+                          ? Colors.green.shade800
+                          : Colors.grey.shade700,
                     ),
                   ),
                 ),
@@ -198,29 +226,31 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   children: [
                     // Order items
                     ...items.map((item) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          Text(
-                            '${item.quantity}×',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[600],
-                            ),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              Text(
+                                '${item.quantity}×',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  item.product?.name ??
+                                      'Product ${item.productId}',
+                                ),
+                              ),
+                              Text(
+                                '\$${(item.unitPrice * item.quantity).toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              item.product?.name ?? 'Product ${item.productId}',
-                            ),
-                          ),
-                          Text(
-                            '\$${(item.unitPrice * item.quantity).toStringAsFixed(2)}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    )),
+                        )),
                     const Divider(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,

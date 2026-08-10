@@ -4,16 +4,13 @@ import '../models/coffee_table.dart';
 import '../models/order.dart';
 import '../models/order_item.dart';
 
-/// Main service that handles all communication with Supabase
 class SupabaseService {
-  // The Supabase client instance
   final SupabaseClient _client = Supabase.instance.client;
 
   // ============================================================
   // PRODUCT OPERATIONS
   // ============================================================
 
-  /// Gets all available products from the database
   Future<List<Product>> getProducts() async {
     try {
       final response = await _client
@@ -34,7 +31,6 @@ class SupabaseService {
     }
   }
 
-  /// Gets a single product by its ID
   Future<Product?> getProductById(int id) async {
     try {
       final response = await _client
@@ -58,7 +54,6 @@ class SupabaseService {
   // TABLE OPERATIONS
   // ============================================================
 
-  /// Gets all tables from the database
   Future<List<CoffeeTable>> getTables() async {
     try {
       final response =
@@ -76,12 +71,26 @@ class SupabaseService {
     }
   }
 
-  /// Updates a table's status
   Future<void> updateTableStatus(int tableId, String status) async {
     try {
+      print('🔄 Updating table $tableId status to: $status');
+
+      // Simple update without select first (more reliable)
       await _client.from('tables').update({'status': status}).eq('id', tableId);
+
+      print('✅ Update command sent for table $tableId');
+
+      // Verify the update worked
+      final verify =
+          await _client.from('tables').select().eq('id', tableId).single();
+
+      print('📊 Verified table status: ${verify['status']}');
+
+      if (verify['status'] != status) {
+        throw Exception('Status update failed');
+      }
     } catch (e) {
-      print('Error in updateTableStatus: $e');
+      print('❌ Error in updateTableStatus: $e');
       throw Exception('Failed to update table status: $e');
     }
   }
@@ -90,7 +99,6 @@ class SupabaseService {
   // ORDER OPERATIONS
   // ============================================================
 
-  /// Gets the active (open) order for a table
   Future<Order?> getActiveOrder(int tableId) async {
     try {
       final response = await _client
@@ -110,9 +118,22 @@ class SupabaseService {
     }
   }
 
-  /// Creates a new order for a table
+  /// SIMPLIFIED createOrder - directly updates table status
   Future<Order> createOrder(int tableId) async {
     try {
+      print('🔄 Creating order for table: $tableId');
+
+      // First, check if there's already an open order
+      final existingOrder = await getActiveOrder(tableId);
+      if (existingOrder != null) {
+        print(
+            '⚠️ Table $tableId already has an open order: ${existingOrder.id}');
+        // Make sure table status is occupied
+        await updateTableStatus(tableId, 'occupied');
+        return existingOrder;
+      }
+
+      // Create the order
       final response = await _client
           .from('orders')
           .insert({
@@ -123,17 +144,48 @@ class SupabaseService {
           .select()
           .single();
 
-      await updateTableStatus(tableId, 'occupied');
+      print('✅ Order created: ${response['id']}');
+
+      // CRITICAL: Update the table status to 'occupied'
+      // Using a direct update without select for reliability
+      await _client
+          .from('tables')
+          .update({'status': 'occupied'}).eq('id', tableId);
+
+      print('✅ Table $tableId status set to occupied');
+
+      // Verify the table status was updated
+      final verifyTable =
+          await _client.from('tables').select().eq('id', tableId).single();
+
+      print(
+          '📊 Table ${verifyTable['table_number']} status after update: ${verifyTable['status']}');
+
+      if (verifyTable['status'] != 'occupied') {
+        print('⚠️ WARNING: Table status is still ${verifyTable['status']}');
+        // Try one more time with a different approach
+        await _client
+            .from('tables')
+            .update({'status': 'occupied'}).eq('id', tableId);
+      }
 
       final map = response as Map<String, dynamic>;
       return Order.fromMap(map);
     } catch (e) {
-      print('Error in createOrder: $e');
+      print('❌ Error in createOrder: $e');
+      // Try to update table status anyway
+      try {
+        await _client
+            .from('tables')
+            .update({'status': 'occupied'}).eq('id', tableId);
+        print('✅ Table status updated after error');
+      } catch (e2) {
+        print('❌ Failed to update table status even after error: $e2');
+      }
       throw Exception('Failed to create order: $e');
     }
   }
 
-  /// Gets all items for an order
   Future<List<OrderItem>> getOrderItems(String orderId) async {
     try {
       final response =
@@ -151,17 +203,15 @@ class SupabaseService {
     }
   }
 
-  /// Adds an item to an order
   Future<OrderItem> addOrderItem(String orderId, int productId,
       {int quantity = 1}) async {
     try {
-      // 1. Get the product details
       final product = await getProductById(productId);
       if (product == null) {
         throw Exception('Product not found or unavailable');
       }
 
-      // 2. Check if this product already exists in the order
+      // Check if this product already exists in the order
       final existingItems = await _client
           .from('order_items')
           .select()
@@ -170,7 +220,6 @@ class SupabaseService {
           .maybeSingle();
 
       if (existingItems != null) {
-        // Update existing item: increase quantity
         final currentQuantity = existingItems['quantity'] as int;
         final newQuantity = currentQuantity + quantity;
 
@@ -190,7 +239,6 @@ class SupabaseService {
         return OrderItem.fromMap(map);
       }
 
-      // 3. Insert new order item
       final response = await _client
           .from('order_items')
           .insert({
@@ -212,7 +260,6 @@ class SupabaseService {
     }
   }
 
-  /// Updates the total of an order
   Future<void> _updateOrderTotal(String orderId) async {
     try {
       final items = await _client
@@ -235,17 +282,14 @@ class SupabaseService {
     }
   }
 
-  /// Closes an order
   Future<Order> closeOrder(String orderId) async {
     try {
-      // 1. Get the order to find its table
       final orderResponse =
           await _client.from('orders').select().eq('id', orderId).single();
 
       final orderMap = orderResponse as Map<String, dynamic>;
       final order = Order.fromMap(orderMap);
 
-      // 2. Update the order status
       final now = DateTime.now().toIso8601String();
       final updatedOrder = await _client
           .from('orders')
@@ -257,7 +301,7 @@ class SupabaseService {
           .select()
           .single();
 
-      // 3. Update the table status to 'available'
+      // Update table status to available
       await updateTableStatus(order.tableId, 'available');
 
       final map = updatedOrder as Map<String, dynamic>;
@@ -268,17 +312,14 @@ class SupabaseService {
     }
   }
 
-  /// Gets a complete order with all its items
   Future<Map<String, dynamic>> getCompleteOrder(String orderId) async {
     try {
-      // 1. Get the order
       final orderData =
           await _client.from('orders').select().eq('id', orderId).single();
 
       final orderMap = orderData as Map<String, dynamic>;
       final order = Order.fromMap(orderMap);
 
-      // 2. Get the table details
       final tableData = await _client
           .from('tables')
           .select()
@@ -288,7 +329,6 @@ class SupabaseService {
       final tableMap = tableData as Map<String, dynamic>;
       final table = CoffeeTable.fromMap(tableMap);
 
-      // 3. Get all order items with product details
       final itemsData =
           await _client.from('order_items').select().eq('order_id', orderId);
 
@@ -328,8 +368,6 @@ class SupabaseService {
   // ADDITIONAL METHODS FOR ORDERS AND REPORTS
   // ============================================================
 
-  /// Get all orders with their table information
-  /// Get all orders with their table information
   Future<List<Map<String, dynamic>>> getAllOrders() async {
     try {
       final response = await _client
@@ -337,7 +375,6 @@ class SupabaseService {
           .select('*, tables(*)')
           .order('created_at', ascending: false);
 
-      // Explicitly cast the response to List<Map<String, dynamic>>
       final List<Map<String, dynamic>> orders = [];
       for (var item in response) {
         orders.add(item as Map<String, dynamic>);
@@ -349,11 +386,9 @@ class SupabaseService {
     }
   }
 
-  /// Get total number of orders
   Future<int> getTotalOrdersCount() async {
     try {
       final response = await _client.from('orders').select('id');
-
       return response.length;
     } catch (e) {
       print('Error in getTotalOrdersCount: $e');
@@ -361,13 +396,11 @@ class SupabaseService {
     }
   }
 
-  /// Get today's orders count
   Future<int> getTodayOrdersCount() async {
     try {
       final today = DateTime.now().toIso8601String().substring(0, 10);
       final response =
           await _client.from('orders').select('id').gte('created_at', today);
-
       return response.length;
     } catch (e) {
       print('Error in getTodayOrdersCount: $e');
@@ -375,7 +408,6 @@ class SupabaseService {
     }
   }
 
-  /// Get total revenue from closed orders
   Future<double> getTotalRevenue() async {
     try {
       final response =
@@ -392,8 +424,6 @@ class SupabaseService {
     }
   }
 
-  /// Get all orders with items for a specific table
-  /// Get all orders with items for a specific table
   Future<List<Map<String, dynamic>>> getOrdersByTable(int tableId) async {
     try {
       final response = await _client

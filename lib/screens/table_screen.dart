@@ -1,18 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../models/coffee_table.dart';
 import '../models/order.dart';
 import '../models/order_item.dart';
 import '../services/supabase_service.dart';
 import 'receipt_screen.dart';
 
-/// The detailed screen for a single table
-///
-/// Shows:
-/// - Table number and status
-/// - Current order items
-/// - Total
-/// - Buttons to Take Order and Close Order
 class TableScreen extends StatefulWidget {
   final CoffeeTable table;
 
@@ -23,6 +16,7 @@ class TableScreen extends StatefulWidget {
 }
 
 class _TableScreenState extends State<TableScreen> {
+  late CoffeeTable _currentTable;
   Order? _activeOrder;
   List<OrderItem> _orderItems = [];
   bool _isLoading = true;
@@ -32,10 +26,10 @@ class _TableScreenState extends State<TableScreen> {
   @override
   void initState() {
     super.initState();
+    _currentTable = widget.table;
     _loadData();
   }
 
-  /// Load the active order and its items
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
@@ -43,13 +37,24 @@ class _TableScreenState extends State<TableScreen> {
     });
 
     try {
-      // 1. Get the active order for this table
+      // Get the latest table status
+      final tables = await _supabaseService.getTables();
+      final updatedTable = tables.firstWhere(
+        (t) => t.id == widget.table.id,
+        orElse: () => widget.table,
+      );
+
+      print(
+          '📊 Table ${updatedTable.tableNumber} status: ${updatedTable.status}');
+      _currentTable = updatedTable;
+
+      // Get the active order
       final order = await _supabaseService.getActiveOrder(widget.table.id);
 
       if (order != null) {
-        // 2. Get items for this order
+        print('✅ Found active order: ${order.id}');
         final items = await _supabaseService.getOrderItems(order.id);
-        // 3. Load product details for each item
+
         final itemsWithProducts = <OrderItem>[];
         for (var item in items) {
           final product = await _supabaseService.getProductById(item.productId);
@@ -74,6 +79,7 @@ class _TableScreenState extends State<TableScreen> {
           _isLoading = false;
         });
       } else {
+        print('ℹ️ No active order for table ${widget.table.tableNumber}');
         setState(() {
           _activeOrder = null;
           _orderItems = [];
@@ -81,6 +87,7 @@ class _TableScreenState extends State<TableScreen> {
         });
       }
     } catch (e) {
+      print('❌ Error in _loadData: $e');
       setState(() {
         _error = 'Failed to load order: $e';
         _isLoading = false;
@@ -88,7 +95,26 @@ class _TableScreenState extends State<TableScreen> {
     }
   }
 
-  /// Show the dialog to add an item to the order
+  Future<void> _refreshTableStatus() async {
+    try {
+      print('🔄 Refreshing table status...');
+      final tables = await _supabaseService.getTables();
+      final updatedTable = tables.firstWhere(
+        (t) => t.id == widget.table.id,
+        orElse: () => widget.table,
+      );
+
+      print('📊 Old status: ${_currentTable.status}');
+      print('📊 New status: ${updatedTable.status}');
+
+      setState(() {
+        _currentTable = updatedTable;
+      });
+    } catch (e) {
+      print('Error refreshing table status: $e');
+    }
+  }
+
   Future<void> _showAddItemDialog() async {
     final TextEditingController controller = TextEditingController();
     final formKey = GlobalKey<FormState>();
@@ -146,9 +172,7 @@ class _TableScreenState extends State<TableScreen> {
     );
   }
 
-  /// Add an item to the current order
   Future<void> _addItemToOrder(int productId) async {
-    // Show loading
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -158,28 +182,26 @@ class _TableScreenState extends State<TableScreen> {
     );
 
     try {
-      // 1. If no active order, create one
       String orderId;
       if (_activeOrder == null) {
+        print('🔄 Creating new order for table ${widget.table.id}');
         final order = await _supabaseService.createOrder(widget.table.id);
         orderId = order.id;
         setState(() {
           _activeOrder = order;
         });
+        await _refreshTableStatus();
       } else {
         orderId = _activeOrder!.id;
       }
 
-      // 2. Add the item
-      final item = await _supabaseService.addOrderItem(orderId, productId);
+      print('➕ Adding product $productId to order $orderId');
+      await _supabaseService.addOrderItem(orderId, productId);
 
-      // 3. Reload the data
       await _loadData();
 
-      // Dismiss loading and show success
       Navigator.pop(context);
 
-      // Show success message
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -189,10 +211,7 @@ class _TableScreenState extends State<TableScreen> {
         );
       }
     } catch (e) {
-      // Dismiss loading
       Navigator.pop(context);
-
-      // Show error
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -204,11 +223,9 @@ class _TableScreenState extends State<TableScreen> {
     }
   }
 
-  /// Close the current order
   Future<void> _closeOrder() async {
     if (_activeOrder == null) return;
 
-    // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -242,7 +259,6 @@ class _TableScreenState extends State<TableScreen> {
     );
 
     if (confirmed == true && context.mounted) {
-      // Show loading
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -252,30 +268,41 @@ class _TableScreenState extends State<TableScreen> {
       );
 
       try {
-        // Close the order
+        print('🔄 Closing order: ${_activeOrder!.id}');
         final closedOrder = await _supabaseService.closeOrder(_activeOrder!.id);
+        print('✅ Order closed: ${closedOrder.id}');
+
+        // CRITICAL: Refresh table status after closing
+        await _refreshTableStatus();
+        print('📊 Table status after close: ${_currentTable.status}');
+
+        // Get complete order for receipt
+        final completeOrder =
+            await _supabaseService.getCompleteOrder(closedOrder.id);
 
         // Dismiss loading
         Navigator.pop(context);
 
-        // Get complete order details for receipt
-        final completeOrder =
-            await _supabaseService.getCompleteOrder(closedOrder.id);
-
-        // Navigate to receipt screen
         if (context.mounted) {
-          Navigator.push(
+          // Navigate to receipt screen
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => ReceiptScreen(orderData: completeOrder),
             ),
-          ).then((_) {
-            // When coming back from receipt, reload data
-            _loadData();
-          });
+          );
+
+          // After returning from receipt, reload everything
+          print('🔄 Returning from receipt, reloading data...');
+          await _loadData();
+          await _refreshTableStatus();
+
+          // Return true to tell home screen to refresh
+          Navigator.pop(context, true);
         }
       } catch (e) {
-        Navigator.pop(context); // Dismiss loading
+        Navigator.pop(context);
+        print('❌ Error closing order: $e');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -288,6 +315,43 @@ class _TableScreenState extends State<TableScreen> {
     }
   }
 
+  void _showQRCode() {
+    final qrData = '/#/menu?table=${widget.table.tableNumber}';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('QR Code - Table ${widget.table.tableNumber}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            QrImageView(
+              data: qrData,
+              version: QrVersions.auto,
+              size: 200,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Scan this QR code to view the menu',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Table ${widget.table.tableNumber}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -297,8 +361,25 @@ class _TableScreenState extends State<TableScreen> {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
+            icon: const Icon(Icons.qr_code),
+            onPressed: _showQRCode,
+            tooltip: 'Show QR Code',
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
+            onPressed: () async {
+              await _refreshTableStatus();
+              await _loadData();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Refreshed!'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              }
+            },
+            tooltip: 'Refresh',
           ),
         ],
       ),
@@ -335,28 +416,41 @@ class _TableScreenState extends State<TableScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status chip
+          // Status chip - Now showing the correct status
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: widget.table.isOccupied
-                  ? Colors.orange[100]
-                  : Colors.green[100],
+              color: _currentTable.isOccupied
+                  ? Colors.red.shade100
+                  : Colors.green.shade100,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(
-              'Status: ${widget.table.statusDisplay}',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: widget.table.isOccupied
-                    ? Colors.orange[800]
-                    : Colors.green[800],
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _currentTable.isOccupied ? Colors.red : Colors.green,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _currentTable.isOccupied ? 'TAKEN 🔴' : 'AVAILABLE 🟢',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: _currentTable.isOccupied
+                        ? Colors.red.shade800
+                        : Colors.green.shade800,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
 
-          // Order section
           if (_activeOrder != null) ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -373,8 +467,8 @@ class _TableScreenState extends State<TableScreen> {
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     color: _activeOrder!.isOpen
-                        ? Colors.blue[100]
-                        : Colors.grey[300],
+                        ? Colors.blue.shade100
+                        : Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -382,16 +476,14 @@ class _TableScreenState extends State<TableScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: _activeOrder!.isOpen
-                          ? Colors.blue[800]
-                          : Colors.grey[700],
+                          ? Colors.blue.shade800
+                          : Colors.grey.shade700,
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-
-            // Order items list
             Expanded(
               child: _orderItems.isEmpty
                   ? const Center(
@@ -405,7 +497,7 @@ class _TableScreenState extends State<TableScreen> {
                           margin: const EdgeInsets.only(bottom: 8),
                           child: ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: Colors.brown[100],
+                              backgroundColor: Colors.brown.shade100,
                               child: Text('${item.quantity}×'),
                             ),
                             title: Text(
@@ -426,14 +518,12 @@ class _TableScreenState extends State<TableScreen> {
                       },
                     ),
             ),
-
-            // Total
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.brown[50],
+                color: Colors.brown.shade50,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.brown[200]!),
+                border: Border.all(color: Colors.brown.shade200!),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -498,16 +588,15 @@ class _TableScreenState extends State<TableScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // Take Order Button
           Expanded(
             child: ElevatedButton(
               onPressed:
                   _activeOrder?.isClosed == true ? null : _showAddItemDialog,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.brown[700],
+                backgroundColor: Colors.brown.shade700,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.grey[300],
+                disabledBackgroundColor: Colors.grey.shade300,
               ),
               child: const Text(
                 '📝 TAKE ORDER',
@@ -516,8 +605,6 @@ class _TableScreenState extends State<TableScreen> {
             ),
           ),
           const SizedBox(width: 12),
-
-          // Close Order Button
           Expanded(
             child: ElevatedButton(
               onPressed: (_activeOrder != null &&
@@ -527,9 +614,9 @@ class _TableScreenState extends State<TableScreen> {
                   : null,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.red[700],
+                backgroundColor: Colors.red.shade700,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.grey[300],
+                disabledBackgroundColor: Colors.grey.shade300,
               ),
               child: const Text(
                 '🧾 CLOSE ORDER',
