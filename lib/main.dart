@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lottie/lottie.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_screen.dart';
 import 'screens/menu_screen.dart';
+import 'screens/splash_screen.dart';
+import 'screens/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,9 +53,9 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.brown,
         useMaterial3: false,
+        fontFamily: 'Poppins',
       ),
       debugShowCheckedModeBanner: false,
-      // Remove home: and use initialRoute instead
       initialRoute: '/',
       onGenerateInitialRoutes: (String initialRoute) {
         final Uri currentUri = Uri.base;
@@ -77,7 +80,6 @@ class MyApp extends StatelessWidget {
           ];
         }
 
-        // Return the splash screen or home screen based on configuration
         return [
           MaterialPageRoute(
             builder: (context) =>
@@ -91,82 +93,6 @@ class MyApp extends StatelessWidget {
               isConfigured ? const HomeScreen() : const ConfigErrorScreen(),
         );
       },
-    );
-  }
-}
-
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
-
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    _navigateToHome();
-  }
-
-  _navigateToHome() async {
-    await Future.delayed(const Duration(seconds: 3));
-    if (context.mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const HomeScreen(),
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/background.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                '☕',
-                style: TextStyle(fontSize: 80),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Coffee Shop',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.brown,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Management System',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 32),
-              Lottie.asset(
-                'assets/animations/loading.json',
-                width: 100,
-                height: 100,
-                fit: BoxFit.contain,
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

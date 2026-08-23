@@ -1,4 +1,5 @@
-// screens/orders_screen.dart
+// screens/orders_screen.dart - Complete updated version
+
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
 import '../models/order.dart';
@@ -40,7 +41,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
         final order = Order.fromMap(orderData);
         final table = CoffeeTable.fromMap(orderData['tables']);
 
-        final items = await _service.getOrderItems(order.id);
+        // Get items from the order data (already loaded with products)
+        List<OrderItem> items = [];
+        if (orderData['items'] != null) {
+          items = (orderData['items'] as List).cast<OrderItem>();
+        } else {
+          // Fallback: load items separately
+          items = await _service.getOrderItems(order.id);
+        }
 
         processedOrders.add({
           'order': order,
@@ -234,6 +242,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                 child: Text(
                                   item.product?.name ??
                                       'Product ${item.productId}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                               Text(

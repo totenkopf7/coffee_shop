@@ -15,18 +15,18 @@ class TableCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 2,
+      elevation: 4,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: table.cardBackgroundColor.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(16),
+            color: table.cardBackgroundColor.withOpacity(0.92),
             border: Border.all(
               color: table.cardBorderColor,
               width: 2,
@@ -35,14 +35,32 @@ class TableCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Table icon from assets
-              Image.asset(
-                'assets/images/table.png',
-                width: 40,
-                height: 40,
-                color: table.tableNumberColor,
+              // Table image with proper sizing
+              Expanded(
+                flex: 3,
+                child: AspectRatio(
+                  aspectRatio: 1.0,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    child: Image.asset(
+                      'assets/images/table.png',
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Fallback if image fails to load
+                        return Icon(
+                          Icons.table_restaurant,
+                          size: 50,
+                          color: table.tableNumberColor,
+                        );
+                      },
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 4),
+              // Table number
               Text(
                 '${table.tableNumber}',
                 style: TextStyle(
@@ -51,10 +69,11 @@ class TableCard extends StatelessWidget {
                   color: table.tableNumberColor,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
+              // Status badge
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: table.statusBackgroundColor,
                   borderRadius: BorderRadius.circular(12),
@@ -74,7 +93,7 @@ class TableCard extends StatelessWidget {
                     Text(
                       table.statusDisplay,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: table.statusColor,
                       ),

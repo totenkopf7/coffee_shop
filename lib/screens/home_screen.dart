@@ -21,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<CoffeeTable> _tables = [];
   bool _isLoading = true;
   String? _error;
+  final SupabaseService _service = SupabaseService();
 
   @override
   void initState() {
@@ -35,8 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final service = SupabaseService();
-      final tables = await service.getTables();
+      final tables = await _service.getTables();
       print('📊 Loaded ${tables.length} tables');
       for (var table in tables) {
         print('  Table ${table.tableNumber}: ${table.status}');
@@ -85,8 +85,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
             ],
           ),
-          backgroundColor: Colors.brown[800],
+          backgroundColor: Colors.brown[800]?.withOpacity(0.92),
           foregroundColor: Colors.white,
+          elevation: 4,
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
@@ -214,9 +215,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       applicationIcon:
                           const Text('☕', style: TextStyle(fontSize: 32)),
                       children: const [
-                        Text('A simple coffee shop management system.'),
+                        Text('A coffee shop management system.'),
                         SizedBox(height: 8),
-                        Text('Built with Flutter & Supabase'),
+                        Text('Built by Zinar'),
                       ],
                     );
                   },
@@ -235,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Icon(Icons.store, size: 16, color: Colors.grey[600]),
                 const SizedBox(width: 4),
                 Text(
-                  '© 2024 Coffee Shop',
+                  '© 2026 Coffee Shop',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[600],
@@ -330,7 +331,7 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisCount: 4,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          childAspectRatio: 0.9,
+          childAspectRatio: 0.85,
         ),
         itemCount: _tables.length,
         itemBuilder: (context, index) {

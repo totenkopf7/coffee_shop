@@ -1,6 +1,7 @@
 // screens/settings_screen.dart
 import 'package:flutter/material.dart';
 import '../widgets/background_widget.dart';
+import 'menu_management_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -12,8 +13,9 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           title: const Text('⚙️ Settings'),
-          backgroundColor: Colors.brown[800],
+          backgroundColor: Colors.brown[800]?.withOpacity(0.92),
           foregroundColor: Colors.white,
+          elevation: 4,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Navigator.pop(context),
@@ -40,10 +42,10 @@ class SettingsScreen extends StatelessWidget {
               title: 'Menu Management',
               subtitle: 'Add, edit, or remove products',
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Menu management coming soon!'),
-                    duration: Duration(seconds: 2),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MenuManagementScreen(),
                   ),
                 );
               },
@@ -108,6 +110,7 @@ class SettingsScreen extends StatelessWidget {
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
+      elevation: 2,
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(8),

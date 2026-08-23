@@ -191,6 +191,7 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
+// In menu_screen.dart, update category chips to have transparent background:
   Widget _buildCategoryChips() {
     return Container(
       height: 60,
@@ -206,7 +207,8 @@ class _MenuScreenState extends State<MenuScreen> {
             label: Text(category),
             selected: isSelected,
             onSelected: (_) => setState(() => _selectedCategory = category),
-            backgroundColor: Colors.white.withOpacity(0.9),
+            backgroundColor:
+                Colors.white.withOpacity(0.85), // Slightly transparent
             selectedColor: Colors.brown[100],
             labelStyle: TextStyle(
               color: isSelected ? Colors.brown[800] : Colors.grey[700],

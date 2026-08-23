@@ -1,4 +1,5 @@
 // screens/table_screen.dart
+import 'package:coffee_shop/models/product.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../models/coffee_table.dart';
@@ -24,7 +25,7 @@ class _TableScreenState extends State<TableScreen> {
   List<OrderItem> _orderItems = [];
   bool _isLoading = true;
   String? _error;
-  final _supabaseService = SupabaseService();
+  final SupabaseService _supabaseService = SupabaseService();
 
   @override
   void initState() {
@@ -117,59 +118,187 @@ class _TableScreenState extends State<TableScreen> {
   }
 
   Future<void> _showAddItemDialog() async {
-    final TextEditingController controller = TextEditingController();
-    final formKey = GlobalKey<FormState>();
+    final products = await _supabaseService.getProducts();
+
+    if (products.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No products available. Please add products first.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Item'),
-        content: Form(
-          key: formKey,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          height: MediaQuery.of(context).size.height * 0.8,
+          padding: const EdgeInsets.all(16),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Enter the Product ID:'),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: 'Product ID',
-                  hintText: 'e.g., 5',
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '📋 Select Product',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const Divider(),
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.8,
+                  ),
+                  itemCount: products.length,
+                  itemBuilder: (context, index) {
+                    final product = products[index];
+                    return _buildProductMenuItem(product);
+                  },
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a product ID';
-                  }
-                  if (int.tryParse(value) == null) {
-                    return 'Please enter a valid number';
-                  }
-                  return null;
-                },
-                autofocus: true,
               ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (formKey.currentState!.validate()) {
-                final productId = int.parse(controller.text);
-                Navigator.pop(context);
-                await _addItemToOrder(productId);
-              }
-            },
-            child: const Text('Add Item'),
-          ),
-        ],
       ),
+    );
+  }
+
+  Widget _buildProductMenuItem(Product product) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.pop(context);
+          _addItemToOrder(product.id);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 2,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: _buildProductImage(product),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                product.name,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                product.formattedPrice,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.brown[700],
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.brown[700],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.add,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'Add',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductImage(Product product) {
+    final imageUrl = product.imageUrl ??
+        'https://images.unsplash.com/photo-1504753793650-d4a2b783c15e?w=200&h=200&fit=crop';
+
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Container(
+          color: Colors.grey[200],
+          child: Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          color: Colors.grey[200],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.broken_image, size: 30, color: Colors.grey[400]),
+              const SizedBox(height: 4),
+              Text(
+                'No Image',
+                style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -349,8 +478,9 @@ class _TableScreenState extends State<TableScreen> {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           title: Text('Table ${widget.table.tableNumber}'),
-          backgroundColor: Colors.brown[800],
+          backgroundColor: Colors.brown[800]?.withOpacity(0.92),
           foregroundColor: Colors.white,
+          elevation: 4,
           actions: [
             IconButton(
               icon: const Icon(Icons.qr_code),
@@ -478,7 +608,22 @@ class _TableScreenState extends State<TableScreen> {
             Expanded(
               child: _orderItems.isEmpty
                   ? const Center(
-                      child: Text('No items yet. Add items to this order.'),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.shopping_cart,
+                              size: 48, color: Colors.grey),
+                          SizedBox(height: 8),
+                          Text(
+                            'No items yet',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                          Text(
+                            'Tap "Take Order" to add items',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
                     )
                   : ListView.builder(
                       itemCount: _orderItems.length,
@@ -486,10 +631,17 @@ class _TableScreenState extends State<TableScreen> {
                         final item = _orderItems[index];
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
+                          elevation: 2,
                           child: ListTile(
                             leading: CircleAvatar(
                               backgroundColor: Colors.brown.shade100,
-                              child: Text('${item.quantity}×'),
+                              child: Text(
+                                '${item.quantity}×',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.brown.shade800,
+                                ),
+                              ),
                             ),
                             title: Text(
                               item.product?.name ?? 'Product ${item.productId}',
@@ -502,6 +654,7 @@ class _TableScreenState extends State<TableScreen> {
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
+                                color: Colors.brown,
                               ),
                             ),
                           ),
@@ -512,7 +665,7 @@ class _TableScreenState extends State<TableScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.brown.shade50,
+                color: Colors.brown.shade50.withOpacity(0.92),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.brown.shade200!),
               ),
@@ -588,6 +741,9 @@ class _TableScreenState extends State<TableScreen> {
                 backgroundColor: Colors.brown.shade700,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: Colors.grey.shade300,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text(
                 '📝 TAKE ORDER',
@@ -608,6 +764,9 @@ class _TableScreenState extends State<TableScreen> {
                 backgroundColor: Colors.red.shade700,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: Colors.grey.shade300,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text(
                 '🧾 CLOSE ORDER',

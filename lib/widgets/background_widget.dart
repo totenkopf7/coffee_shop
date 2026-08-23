@@ -14,11 +14,14 @@ class BackgroundWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
+      height: double.infinity,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: const AssetImage('assets/images/background.png'),
           fit: BoxFit.cover,
           opacity: opacity,
+          alignment: Alignment.center,
         ),
       ),
       child: child,

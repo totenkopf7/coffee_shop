@@ -10,26 +10,18 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # Supabase for backend
   supabase_flutter: ^1.10.0
-  
-  # For environment variables
   flutter_dotenv: ^5.1.0
-  
-  # For state management
   provider: ^6.0.5
-  
-  # For QR code generation
   qr_flutter: ^4.1.0
-  
-  # For UUID generation
   uuid: ^3.0.7
-  
-  # For date formatting
   intl: ^0.18.1
-  
-  # For Lottie animations
   lottie: ^2.7.0
+  image_picker: ^1.0.4
+  
+  # PDF Generation
+  pdf: ^3.10.4
+  printing: ^5.11.1
 
 dev_dependencies:
   flutter_test:
@@ -39,9 +31,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   
-  # This tells Flutter to include your assets in the build
   assets:
     - .env
     - assets/images/background.png
     - assets/images/table.png
     - assets/animations/loading.json
+    - assets/fonts/OpenSans-Regular.ttf
