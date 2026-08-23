@@ -1,6 +1,9 @@
+// screens/menu_screen.dart
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
 import '../models/product.dart';
+import '../widgets/background_widget.dart';
+import '../widgets/loading_widget.dart';
 
 class MenuScreen extends StatefulWidget {
   final int? tableId;
@@ -18,7 +21,6 @@ class _MenuScreenState extends State<MenuScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'All';
 
-  // Get unique categories from products
   List<String> get _categories {
     final categories =
         _products.map((p) => p.category ?? 'Other').toSet().toList();
@@ -26,14 +28,11 @@ class _MenuScreenState extends State<MenuScreen> {
     return ['All', ...categories];
   }
 
-  // Filtered products based on search and category
   List<Product> get _filteredProducts {
     return _products.where((product) {
-      // Category filter
       if (_selectedCategory != 'All' && product.category != _selectedCategory) {
         return false;
       }
-      // Search filter
       if (_searchQuery.isNotEmpty) {
         final query = _searchQuery.toLowerCase();
         return product.name.toLowerCase().contains(query) ||
@@ -72,57 +71,50 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: const Text(
-          '☕ Our Menu',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.brown[800],
-        foregroundColor: Colors.white,
-        elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              onChanged: (value) => setState(() => _searchQuery = value),
-              decoration: InputDecoration(
-                hintText: 'Search for your favorite...',
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                prefixIcon: const Icon(Icons.search, color: Colors.white70),
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.15),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+    return BackgroundWidget(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text(
+            '☕ Our Menu',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Colors.brown[800],
+          foregroundColor: Colors.white,
+          elevation: 0,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(60),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                onChanged: (value) => setState(() => _searchQuery = value),
+                decoration: InputDecoration(
+                  hintText: 'Search for your favorite...',
+                  hintStyle: TextStyle(color: Colors.grey[400]),
+                  prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.15),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                style: const TextStyle(color: Colors.white),
               ),
-              style: const TextStyle(color: Colors.white),
             ),
           ),
         ),
+        body: _buildBody(),
+        bottomNavigationBar: _buildBottomBar(),
       ),
-      body: _buildBody(),
-      bottomNavigationBar: _buildBottomBar(),
     );
   }
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Loading delicious items...'),
-          ],
-        ),
-      );
+      return const LoadingWidget(message: 'Loading delicious items...');
     }
 
     if (_error != null) {
@@ -167,10 +159,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
     return Column(
       children: [
-        // Category chips
         _buildCategoryChips(),
-
-        // Product grid
         Expanded(
           child: _filteredProducts.isEmpty
               ? const Center(
@@ -217,7 +206,7 @@ class _MenuScreenState extends State<MenuScreen> {
             label: Text(category),
             selected: isSelected,
             onSelected: (_) => setState(() => _selectedCategory = category),
-            backgroundColor: Colors.white,
+            backgroundColor: Colors.white.withOpacity(0.9),
             selectedColor: Colors.brown[100],
             labelStyle: TextStyle(
               color: isSelected ? Colors.brown[800] : Colors.grey[700],
@@ -249,7 +238,6 @@ class _MenuScreenState extends State<MenuScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Product Image
             Expanded(
               flex: 2,
               child: ClipRRect(
@@ -258,8 +246,6 @@ class _MenuScreenState extends State<MenuScreen> {
                 child: _buildProductImage(product),
               ),
             ),
-
-            // Product Info
             Expanded(
               flex: 1,
               child: Padding(
@@ -271,7 +257,6 @@ class _MenuScreenState extends State<MenuScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Product ID badge
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 2),
@@ -289,7 +274,6 @@ class _MenuScreenState extends State<MenuScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        // Product Name
                         Text(
                           product.name,
                           style: const TextStyle(
@@ -299,7 +283,6 @@ class _MenuScreenState extends State<MenuScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        // Product Description
                         if (product.description != null)
                           Text(
                             product.description!,
@@ -312,7 +295,6 @@ class _MenuScreenState extends State<MenuScreen> {
                           ),
                       ],
                     ),
-                    // Price
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -324,7 +306,6 @@ class _MenuScreenState extends State<MenuScreen> {
                             color: Colors.brown[800],
                           ),
                         ),
-                        // Category tag
                         if (product.category != null)
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -354,14 +335,12 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   Widget _buildProductImage(Product product) {
-    // Use a default image if no image URL
     final imageUrl = product.imageUrl ??
         'https://images.unsplash.com/photo-1504753793650-d4a2b783c15e?w=400&h=400&fit=crop';
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Image with fade-in effect
         Image.network(
           imageUrl,
           fit: BoxFit.cover,
@@ -396,7 +375,6 @@ class _MenuScreenState extends State<MenuScreen> {
             );
           },
         ),
-        // Add to order button (for future functionality)
         Positioned(
           top: 8,
           right: 8,
@@ -430,7 +408,6 @@ class _MenuScreenState extends State<MenuScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Product Image
               ClipRRect(
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(20)),
@@ -545,7 +522,7 @@ class _MenuScreenState extends State<MenuScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.95),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -557,7 +534,6 @@ class _MenuScreenState extends State<MenuScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Table info if provided
           if (widget.tableId != null)
             Row(
               children: [

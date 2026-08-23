@@ -1,8 +1,11 @@
+// screens/orders_screen.dart
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
 import '../models/order.dart';
 import '../models/order_item.dart';
 import '../models/coffee_table.dart';
+import '../widgets/background_widget.dart';
+import '../widgets/loading_widget.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -30,16 +33,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
     });
 
     try {
-      // Get all orders from Supabase using the service method
       final response = await _service.getAllOrders();
 
-      // Process orders
       final List<Map<String, dynamic>> processedOrders = [];
       for (var orderData in response) {
         final order = Order.fromMap(orderData);
         final table = CoffeeTable.fromMap(orderData['tables']);
 
-        // Get items for this order
         final items = await _service.getOrderItems(order.id);
 
         processedOrders.add({
@@ -64,38 +64,32 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('📋 Orders'),
-        backgroundColor: Colors.brown[800],
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadOrders,
+    return BackgroundWidget(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text('📋 Orders'),
+          backgroundColor: Colors.brown[800],
+          foregroundColor: Colors.white,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
           ),
-        ],
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadOrders,
+            ),
+          ],
+        ),
+        body: _buildBody(),
       ),
-      body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Loading orders...'),
-          ],
-        ),
-      );
+      return const LoadingWidget(message: 'Loading orders...');
     }
 
     if (_error != null) {
@@ -224,7 +218,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    // Order items
                     ...items.map((item) => Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(

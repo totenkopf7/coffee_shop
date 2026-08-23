@@ -1,6 +1,9 @@
+// screens/reports_screen.dart
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
 import '../models/coffee_table.dart';
+import '../widgets/background_widget.dart';
+import '../widgets/loading_widget.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -28,12 +31,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
     });
 
     try {
-      // Get stats using the service methods
       final totalOrders = await _service.getTotalOrdersCount();
       final todayOrders = await _service.getTodayOrdersCount();
       final totalRevenue = await _service.getTotalRevenue();
 
-      // Get occupied tables
       final tables = await _service.getTables();
       final occupiedTables = tables.where((t) => t.isOccupied).length;
 
@@ -57,38 +58,32 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('📊 Reports'),
-        backgroundColor: Colors.brown[800],
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadStats,
+    return BackgroundWidget(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text('📊 Reports'),
+          backgroundColor: Colors.brown[800],
+          foregroundColor: Colors.white,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
           ),
-        ],
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadStats,
+            ),
+          ],
+        ),
+        body: _buildBody(),
       ),
-      body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Loading statistics...'),
-          ],
-        ),
-      );
+      return const LoadingWidget(message: 'Loading statistics...');
     }
 
     if (_error != null) {

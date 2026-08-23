@@ -1,9 +1,12 @@
+// screens/table_screen.dart
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../models/coffee_table.dart';
 import '../models/order.dart';
 import '../models/order_item.dart';
 import '../services/supabase_service.dart';
+import '../widgets/background_widget.dart';
+import '../widgets/loading_widget.dart';
 import 'receipt_screen.dart';
 
 class TableScreen extends StatefulWidget {
@@ -37,7 +40,6 @@ class _TableScreenState extends State<TableScreen> {
     });
 
     try {
-      // Get the latest table status
       final tables = await _supabaseService.getTables();
       final updatedTable = tables.firstWhere(
         (t) => t.id == widget.table.id,
@@ -48,7 +50,6 @@ class _TableScreenState extends State<TableScreen> {
           '📊 Table ${updatedTable.tableNumber} status: ${updatedTable.status}');
       _currentTable = updatedTable;
 
-      // Get the active order
       final order = await _supabaseService.getActiveOrder(widget.table.id);
 
       if (order != null) {
@@ -176,9 +177,7 @@ class _TableScreenState extends State<TableScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (context) => const LoadingWidget(message: 'Adding item...'),
     );
 
     try {
@@ -262,9 +261,7 @@ class _TableScreenState extends State<TableScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
+        builder: (context) => const LoadingWidget(message: 'Closing order...'),
       );
 
       try {
@@ -272,19 +269,15 @@ class _TableScreenState extends State<TableScreen> {
         final closedOrder = await _supabaseService.closeOrder(_activeOrder!.id);
         print('✅ Order closed: ${closedOrder.id}');
 
-        // CRITICAL: Refresh table status after closing
         await _refreshTableStatus();
         print('📊 Table status after close: ${_currentTable.status}');
 
-        // Get complete order for receipt
         final completeOrder =
             await _supabaseService.getCompleteOrder(closedOrder.id);
 
-        // Dismiss loading
         Navigator.pop(context);
 
         if (context.mounted) {
-          // Navigate to receipt screen
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
@@ -292,12 +285,9 @@ class _TableScreenState extends State<TableScreen> {
             ),
           );
 
-          // After returning from receipt, reload everything
           print('🔄 Returning from receipt, reloading data...');
           await _loadData();
           await _refreshTableStatus();
-
-          // Return true to tell home screen to refresh
           Navigator.pop(context, true);
         }
       } catch (e) {
@@ -354,43 +344,46 @@ class _TableScreenState extends State<TableScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Table ${widget.table.tableNumber}'),
-        backgroundColor: Colors.brown[800],
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.qr_code),
-            onPressed: _showQRCode,
-            tooltip: 'Show QR Code',
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              await _refreshTableStatus();
-              await _loadData();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Refreshed!'),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
-              }
-            },
-            tooltip: 'Refresh',
-          ),
-        ],
+    return BackgroundWidget(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: Text('Table ${widget.table.tableNumber}'),
+          backgroundColor: Colors.brown[800],
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.qr_code),
+              onPressed: _showQRCode,
+              tooltip: 'Show QR Code',
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () async {
+                await _refreshTableStatus();
+                await _loadData();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Refreshed!'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+              },
+              tooltip: 'Refresh',
+            ),
+          ],
+        ),
+        body: _buildBody(),
+        bottomNavigationBar: _buildBottomBar(),
       ),
-      body: _buildBody(),
-      bottomNavigationBar: _buildBottomBar(),
     );
   }
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingWidget(message: 'Loading order...');
     }
 
     if (_error != null) {
@@ -416,7 +409,6 @@ class _TableScreenState extends State<TableScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status chip - Now showing the correct status
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -450,7 +442,6 @@ class _TableScreenState extends State<TableScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
           if (_activeOrder != null) ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -576,7 +567,7 @@ class _TableScreenState extends State<TableScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.95),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.3),

@@ -1,7 +1,10 @@
+// screens/home_screen.dart
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
 import '../models/coffee_table.dart';
 import '../widgets/table_card.dart';
+import '../widgets/background_widget.dart';
+import '../widgets/loading_widget.dart';
 import 'table_screen.dart';
 import 'settings_screen.dart';
 import 'orders_screen.dart';
@@ -64,34 +67,37 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '☕ Coffee Shop',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (_tables.isNotEmpty)
-              Text(
-                _getStatusSummary(),
-                style: const TextStyle(fontSize: 12, color: Colors.white70),
+    return BackgroundWidget(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '☕ Coffee Shop',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
+              if (_tables.isNotEmpty)
+                Text(
+                  _getStatusSummary(),
+                  style: const TextStyle(fontSize: 12, color: Colors.white70),
+                ),
+            ],
+          ),
+          backgroundColor: Colors.brown[800],
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _refreshTables,
+              tooltip: 'Refresh tables',
+            ),
           ],
         ),
-        backgroundColor: Colors.brown[800],
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshTables,
-            tooltip: 'Refresh tables',
-          ),
-        ],
+        drawer: _buildDrawer(),
+        body: _buildBody(),
       ),
-      drawer: _buildDrawer(),
-      body: _buildBody(),
     );
   }
 
@@ -279,16 +285,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Loading tables...'),
-          ],
-        ),
-      );
+      return const LoadingWidget(message: 'Loading tables...');
     }
 
     if (_error != null) {

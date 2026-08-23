@@ -1,0 +1,15 @@
+[build]
+  command = "flutter build web --release"
+  publish = "build/web"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Make sure .env file is served
+[[headers]]
+  for = "/assets/.env"
+  [headers.values]
+    Content-Type = "text/plain"
+    Cache-Control = "no-cache"
