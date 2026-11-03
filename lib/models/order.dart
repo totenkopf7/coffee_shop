@@ -1,56 +1,66 @@
-import 'order_item.dart';
+import '../core/constants.dart';
 
+/// A single "round" of ordering inside a session.
+/// One session can have many orders (round 1, round 2, ...).
 class Order {
-  final String id;
-  final int tableId;
-  final String status;
+  final String id; // uuid
+  final int tableId; // bigint
+  final String? sessionId; // uuid — may be null for legacy rows
+  final int roundNumber;
+  final String status; // open | placed | preparing | served | check_requested | closed
   final double total;
-  final DateTime? createdAt;
+  final DateTime createdAt;
   final DateTime? closedAt;
-  List<OrderItem> items;
 
-  Order({
+  const Order({
     required this.id,
     required this.tableId,
-    this.status = 'open',
-    this.total = 0.0,
-    this.createdAt,
+    required this.sessionId,
+    required this.roundNumber,
+    required this.status,
+    required this.total,
+    required this.createdAt,
     this.closedAt,
-    this.items = const [],
   });
 
   factory Order.fromMap(Map<String, dynamic> map) {
     return Order(
       id: map['id'] as String,
-      tableId: map['table_id'] as int,
-      status: map['status'] as String? ?? 'open',
+      tableId: (map['table_id'] as num).toInt(),
+      sessionId: map['session_id'] as String?,
+      roundNumber: (map['round_number'] as num?)?.toInt() ?? 1,
+      status: (map['status'] as String?) ?? OrderStatus.placed,
       total: (map['total'] as num?)?.toDouble() ?? 0.0,
-      createdAt: map['created_at'] != null
-          ? DateTime.parse(map['created_at'] as String)
-          : null,
+      createdAt: DateTime.parse(map['created_at'] as String).toLocal(),
       closedAt: map['closed_at'] != null
-          ? DateTime.parse(map['closed_at'] as String)
+          ? DateTime.parse(map['closed_at'] as String).toLocal()
           : null,
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'table_id': tableId,
-      'status': status,
-      'total': total,
-      'closed_at': closedAt?.toIso8601String(),
-    };
+  bool get isClosed => status == OrderStatus.closed;
+  bool get isOpen =>
+      status == OrderStatus.open || status == OrderStatus.placed;
+
+  String get statusDisplay {
+    switch (status) {
+      case OrderStatus.open:
+        return 'OPEN';
+      case OrderStatus.placed:
+        return 'PLACED';
+      case OrderStatus.preparing:
+        return 'PREPARING';
+      case OrderStatus.served:
+        return 'SERVED';
+      case OrderStatus.checkRequested:
+        return 'CHECK REQUESTED';
+      case OrderStatus.closed:
+        return 'CLOSED';
+      default:
+        return status.toUpperCase();
+    }
   }
 
-  double calculateTotal() {
-    return items.fold(
-        0.0, (sum, item) => sum + (item.unitPrice * item.quantity));
-  }
-
-  int get totalItems => items.fold(0, (sum, item) => sum + item.quantity);
-  bool get isOpen => status == 'open';
-  bool get isClosed => status == 'closed';
-  String get statusDisplay => status.toUpperCase();
+  @override
+  String toString() => 'Order($id, table=$tableId, round=$roundNumber, $status)';
 }

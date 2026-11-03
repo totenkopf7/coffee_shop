@@ -1,3 +1,4 @@
+/// A menu item.
 class Product {
   final int id;
   final String name;
@@ -6,7 +7,6 @@ class Product {
   final String? category;
   final String? imageUrl;
   final bool isAvailable;
-  final DateTime? createdAt;
 
   const Product({
     required this.id,
@@ -16,35 +16,31 @@ class Product {
     this.category,
     this.imageUrl,
     this.isAvailable = true,
-    this.createdAt,
   });
 
   factory Product.fromMap(Map<String, dynamic> map) {
     return Product(
-      id: map['id'] as int,
+      id: (map['id'] as num).toInt(),
       name: map['name'] as String,
       description: map['description'] as String?,
       price: (map['price'] as num).toDouble(),
       category: map['category'] as String?,
       imageUrl: map['image_url'] as String?,
-      isAvailable: map['is_available'] as bool? ?? true,
-      createdAt: map['created_at'] != null
-          ? DateTime.parse(map['created_at'] as String)
-          : null,
+      isAvailable: (map['is_available'] as bool?) ?? true,
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'description': description,
-      'price': price,
-      'category': category,
-      'image_url': imageUrl,
-      'is_available': isAvailable,
-    };
-  }
+  Map<String, dynamic> toInsertMap() => {
+        'name': name,
+        'description': description,
+        'price': price,
+        'category': category,
+        'image_url': imageUrl,
+        'is_available': isAvailable,
+      };
 
   String get formattedPrice => '\$${price.toStringAsFixed(2)}';
+
+  @override
+  String toString() => 'Product(#$id, $name, $price)';
 }

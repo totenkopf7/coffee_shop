@@ -1,760 +1,658 @@
-// services/supabase_service.dart
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
+// services\supabase_service.dart
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
-import '../models/product.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../core/constants.dart';
 import '../models/coffee_table.dart';
 import '../models/order.dart';
 import '../models/order_item.dart';
+import '../models/order_with_items.dart';
+import '../models/product.dart';
+import '../models/table_session.dart';
+import 'package:flutter/foundation.dart';
 
 class SupabaseService {
-  final SupabaseClient _client = Supabase.instance.client;
-  final Uuid _uuid = const Uuid();
+  SupabaseService._();
+  static final SupabaseService instance = SupabaseService._();
 
-  // ============================================================
-  // IMAGE UPLOAD METHODS
-  // ============================================================
+  SupabaseClient get _client => Supabase.instance.client;
+
+  int _nextChannelId() => DateTime.now().microsecondsSinceEpoch;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TABLES
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Future<List<CoffeeTable>> getTables() async {
+    final rows = await _client
+        .from('tables')
+        .select('id, table_number, is_open')
+        .order('table_number', ascending: true);
+    return rows
+        .map<CoffeeTable>((r) => CoffeeTable.fromMap(r))
+        .toList(growable: false);
+  }
+
+  Future<CoffeeTable?> getTableByNumber(int tableNumber) async {
+    // Defensive: reject obviously bad input before hitting the network.
+    if (tableNumber <= 0 || tableNumber > 100000) return null;
+    final row = await _client
+        .from('tables')
+        .select('id, table_number, is_open')
+        .eq('table_number', tableNumber)
+        .maybeSingle();
+    if (row == null) return null;
+    return CoffeeTable.fromMap(row);
+  }
+
+  Future<CoffeeTable?> getTableById(int id) async {
+    if (id <= 0) return null;
+    final row = await _client
+        .from('tables')
+        .select('id, table_number, is_open')
+        .eq('id', id)
+        .maybeSingle();
+    if (row == null) return null;
+    return CoffeeTable.fromMap(row);
+  }
+
+  /// Realtime stream of ALL tables.
+  ///
+  /// Explicit channel + initial fetch — immune to the `.stream()` cache
+  /// ordering quirks and works as long as `tables` is in the
+  /// `supabase_realtime` publication.
+  Stream<List<CoffeeTable>> watchTables() {
+    late StreamController<List<CoffeeTable>> controller;
+    RealtimeChannel? channel;
+
+    Future<void> emit() async {
+      try {
+        final rows = await getTables();
+        if (!controller.isClosed) controller.add(rows);
+      } catch (e) {
+        if (!controller.isClosed) controller.addError(e);
+      }
+    }
+
+    controller = StreamController<List<CoffeeTable>>(
+      onListen: () async {
+        channel = _client
+            .channel('public:tables:${_nextChannelId()}')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'tables',
+              callback: (_) => emit(),
+            )
+            .subscribe();
+        await emit();
+      },
+      onCancel: () async {
+        await channel?.unsubscribe();
+        channel = null;
+        await controller.close();
+      },
+    );
+
+    return controller.stream;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SESSIONS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Future<TableSession?> getActiveSessionForTable(int tableNumber) async {
+    if (tableNumber <= 0) return null;
+    final row = await _client
+        .from('table_sessions')
+        .select()
+        .eq('table_number', tableNumber)
+        .neq('status', SessionStatus.closed)
+        .order('opened_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+    if (row == null) return null;
+    return TableSession.fromMap(row);
+  }
+
+  Future<TableSession?> getSessionById(String sessionId) async {
+    if (sessionId.trim().isEmpty) return null;
+    final row = await _client
+        .from('table_sessions')
+        .select()
+        .eq('id', sessionId)
+        .maybeSingle();
+    if (row == null) return null;
+    return TableSession.fromMap(row);
+  }
+
+  Future<List<TableSession>> getAllSessions() async {
+    final rows = await _client
+        .from('table_sessions')
+        .select()
+        .order('opened_at', ascending: false);
+    return rows
+        .map<TableSession>((r) => TableSession.fromMap(r))
+        .toList(growable: false);
+  }
+
+  /// Realtime stream of ALL sessions (explicit channel + initial fetch).
+  Stream<List<TableSession>> watchAllSessions() {
+    late StreamController<List<TableSession>> controller;
+    RealtimeChannel? channel;
+
+    Future<void> emit() async {
+      try {
+        final rows = await getAllSessions();
+        if (!controller.isClosed) controller.add(rows);
+      } catch (e) {
+        if (!controller.isClosed) controller.addError(e);
+      }
+    }
+
+    controller = StreamController<List<TableSession>>(
+      onListen: () async {
+        channel = _client
+            .channel('public:table_sessions:${_nextChannelId()}')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'table_sessions',
+              callback: (_) => emit(),
+            )
+            .subscribe();
+        await emit();
+      },
+      onCancel: () async {
+        await channel?.unsubscribe();
+        channel = null;
+        await controller.close();
+      },
+    );
+
+    return controller.stream;
+  }
+
+  Stream<List<TableSession>> watchActiveSessions() {
+    return watchAllSessions().map(
+      (sessions) => sessions.where((s) => !s.isClosed).toList(growable: false),
+    );
+  }
+
+  /// Stream of a single session (customer status screen).
+  Stream<TableSession?> watchSession(String sessionId) {
+    if (sessionId.trim().isEmpty) {
+      return Stream<TableSession?>.value(null);
+    }
+    late StreamController<TableSession?> controller;
+    RealtimeChannel? channel;
+
+    Future<void> emit() async {
+      try {
+        final s = await getSessionById(sessionId);
+        if (!controller.isClosed) controller.add(s);
+      } catch (e) {
+        if (!controller.isClosed) controller.addError(e);
+      }
+    }
+
+    controller = StreamController<TableSession?>(
+      onListen: () async {
+        channel = _client
+            .channel('public:table_session:$sessionId:${_nextChannelId()}')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'table_sessions',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'id',
+                value: sessionId,
+              ),
+              callback: (_) => emit(),
+            )
+            .subscribe();
+        await emit();
+      },
+      onCancel: () async {
+        await channel?.unsubscribe();
+        channel = null;
+        await controller.close();
+      },
+    );
+
+    return controller.stream;
+  }
+
+  Future<TableSession> openTable(int tableNumber) async {
+    final table = await getTableByNumber(tableNumber);
+    if (table == null) {
+      throw Exception('Table $tableNumber does not exist');
+    }
+
+    final existing = await getActiveSessionForTable(tableNumber);
+    if (existing != null) {
+      if (!table.isOpen) {
+        await _client.from('tables').update({
+          'is_open': true,
+          'status': AppConstants.tableStatusOccupied,
+        }).eq('id', table.id);
+      }
+      return existing;
+    }
+
+    final inserted = await _client
+        .from('table_sessions')
+        .insert({
+          'table_id': table.id,
+          'table_number': table.tableNumber,
+          'status': SessionStatus.open,
+        })
+        .select()
+        .single();
+
+    await _client.from('tables').update({
+      'is_open': true,
+      'status': AppConstants.tableStatusOccupied,
+    }).eq('id', table.id);
+
+    return TableSession.fromMap(inserted);
+  }
+
+  Future<void> requestCheck(String sessionId) async {
+    if (sessionId.trim().isEmpty) {
+      throw Exception('Invalid session id');
+    }
+    await _client.rpc(
+      'request_check',
+      params: {'p_session_id': sessionId},
+    );
+  }
+
+  Future<void> closeTable(String sessionId) async {
+    final session = await getSessionById(sessionId);
+    if (session == null) {
+      throw Exception('Session not found');
+    }
+
+    final nowUtc = DateTime.now().toUtc().toIso8601String();
+
+    await _client
+        .from('orders')
+        .update({'status': OrderStatus.closed, 'closed_at': nowUtc})
+        .eq('session_id', sessionId)
+        .neq('status', OrderStatus.closed);
+
+    await _client.from('table_sessions').update({
+      'status': SessionStatus.closed,
+      'closed_at': nowUtc,
+    }).eq('id', sessionId);
+
+    await _client.from('tables').update({
+      'is_open': false,
+      'status': AppConstants.tableStatusAvailable,
+    }).eq('id', session.tableId);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // PRODUCTS / MENU
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Future<List<Product>> getAvailableProducts() async {
+    final rows = await _client
+        .from('products')
+        .select()
+        .eq('is_available', true)
+        .order('category', ascending: true)
+        .order('name', ascending: true);
+    return rows.map<Product>((r) => Product.fromMap(r)).toList();
+  }
+
+  Future<List<Product>> getAllProducts() async {
+    final rows =
+        await _client.from('products').select().order('name', ascending: true);
+    return rows.map<Product>((r) => Product.fromMap(r)).toList();
+  }
+
+  Future<Product?> getProductById(int id) async {
+    if (id <= 0) return null;
+    final row =
+        await _client.from('products').select().eq('id', id).maybeSingle();
+    if (row == null) return null;
+    return Product.fromMap(row);
+  }
+
+  Future<void> addProduct(Product product) async {
+    await _client.from('products').insert(product.toInsertMap());
+  }
+
+  Future<void> updateProduct(Product product) async {
+    if (product.id <= 0) throw Exception('Invalid product id');
+    await _client
+        .from('products')
+        .update(product.toInsertMap())
+        .eq('id', product.id);
+  }
+
+  Future<void> setProductAvailability(int id, bool available) async {
+    if (id <= 0) throw Exception('Invalid product id');
+    await _client
+        .from('products')
+        .update({'is_available': available}).eq('id', id);
+  }
+
+  Future<bool> productHasOrders(int id) async {
+    if (id <= 0) return false;
+    final rows = await _client
+        .from('order_items')
+        .select('id')
+        .eq('product_id', id)
+        .limit(1);
+    return rows.isNotEmpty;
+  }
+
+  Future<void> deleteProduct(int id) async {
+    if (id <= 0) throw Exception('Invalid product id');
+    if (await productHasOrders(id)) {
+      throw Exception(
+          'This product appears in existing orders. Hide it instead of deleting.');
+    }
+    await _client.from('products').delete().eq('id', id);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ORDERS / ROUNDS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Future<List<OrderWithItems>> getOrdersForSession(String sessionId) async {
+    if (sessionId.trim().isEmpty) return const [];
+    final orderRows = await _client
+        .from('orders')
+        .select()
+        .eq('session_id', sessionId)
+        .order('round_number', ascending: true);
+
+    final seen = <String>{};
+    final uniqueRows = <Map<String, dynamic>>[];
+    for (final row in orderRows) {
+      final id = row['id'] as String;
+      if (seen.add(id)) uniqueRows.add(row);
+    }
+
+    final result = <OrderWithItems>[];
+    for (final row in uniqueRows) {
+      final order = Order.fromMap(row);
+      final items = await _getItemsForOrder(order.id);
+      result.add(OrderWithItems(order: order, items: items));
+    }
+
+    result.sort((a, b) => a.order.roundNumber.compareTo(b.order.roundNumber));
+    return result;
+  }
+
+  Stream<List<OrderWithItems>> watchOrdersForSession(String sessionId) {
+    if (sessionId.trim().isEmpty) {
+      return Stream<List<OrderWithItems>>.value(const []);
+    }
+    late StreamController<List<OrderWithItems>> controller;
+    RealtimeChannel? channel;
+
+    Future<void> emit() async {
+      try {
+        final list = await getOrdersForSession(sessionId);
+        if (!controller.isClosed) controller.add(list);
+      } catch (e) {
+        if (!controller.isClosed) controller.addError(e);
+      }
+    }
+
+    controller = StreamController<List<OrderWithItems>>(
+      onListen: () async {
+        channel = _client
+            .channel('public:orders:session:$sessionId:${_nextChannelId()}')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'orders',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'session_id',
+                value: sessionId,
+              ),
+              callback: (_) => emit(),
+            )
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'order_items',
+              callback: (_) => emit(),
+            )
+            .subscribe();
+        await emit();
+      },
+      onCancel: () async {
+        await channel?.unsubscribe();
+        channel = null;
+        await controller.close();
+      },
+    );
+
+    return controller.stream;
+  }
+
+  Future<List<Order>> getAllOrders() async {
+    final rows = await _client
+        .from('orders')
+        .select()
+        .order('created_at', ascending: false);
+    return rows.map<Order>((r) => Order.fromMap(r)).toList(growable: false);
+  }
+
+  Stream<List<Order>> watchAllOrders() {
+    late StreamController<List<Order>> controller;
+    RealtimeChannel? channel;
+
+    Future<void> emit() async {
+      try {
+        final list = await getAllOrders();
+        if (!controller.isClosed) controller.add(list);
+      } catch (e) {
+        if (!controller.isClosed) controller.addError(e);
+      }
+    }
+
+    controller = StreamController<List<Order>>(
+      onListen: () async {
+        channel = _client
+            .channel('public:orders:all:${_nextChannelId()}')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'orders',
+              callback: (_) => emit(),
+            )
+            .subscribe();
+        await emit();
+      },
+      onCancel: () async {
+        await channel?.unsubscribe();
+        channel = null;
+        await controller.close();
+      },
+    );
+
+    return controller.stream;
+  }
+
+  Future<List<OrderItem>> _getItemsForOrder(String orderId) async {
+    if (orderId.trim().isEmpty) return const [];
+    final rows = await _client
+        .from('order_items')
+        .select('*, products(*)')
+        .eq('order_id', orderId);
+
+    final seen = <String>{};
+    final items = <OrderItem>[];
+    for (final row in rows) {
+      final id = row['id'] as String;
+      if (!seen.add(id)) continue;
+      items.add(OrderItem.fromMap(row));
+    }
+    return items;
+  }
+
+  Future<List<OrderItem>> getOrderItems(String orderId) =>
+      _getItemsForOrder(orderId);
+
+  Future<Order> placeOrder({
+    required String sessionId,
+    required int tableId,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    if (sessionId.trim().isEmpty) throw Exception('Invalid session');
+    if (tableId <= 0) throw Exception('Invalid table');
+    if (items.isEmpty) throw Exception('Cannot place an empty order');
+
+    // Validate items before we touch the DB.
+    for (final i in items) {
+      final pid = i['productId'];
+      final qty = i['quantity'];
+      final price = i['unitPrice'];
+      if (pid is! int || pid <= 0) throw Exception('Invalid product id');
+      if (qty is! int || qty <= 0) throw Exception('Invalid quantity');
+      if (price is! num || price < 0) throw Exception('Invalid price');
+    }
+
+    final existing = await _client
+        .from('orders')
+        .select('round_number')
+        .eq('session_id', sessionId)
+        .order('round_number', ascending: false)
+        .limit(1);
+
+    final nextRound = existing.isEmpty
+        ? 1
+        : ((existing.first['round_number'] as num).toInt() + 1);
+
+    double total = 0;
+    for (final i in items) {
+      total += (i['quantity'] as int) * (i['unitPrice'] as num).toDouble();
+    }
+
+    final orderRow = await _client
+        .from('orders')
+        .insert({
+          'table_id': tableId,
+          'session_id': sessionId,
+          'round_number': nextRound,
+          'status': OrderStatus.placed,
+          'total': total,
+        })
+        .select()
+        .single();
+
+    final orderId = orderRow['id'] as String;
+
+    final itemRows = items
+        .map((i) => {
+              'order_id': orderId,
+              'product_id': i['productId'] as int,
+              'quantity': i['quantity'] as int,
+              'unit_price': (i['unitPrice'] as num).toDouble(),
+            })
+        .toList();
+
+    await _client.from('order_items').insert(itemRows);
+
+    return Order.fromMap(orderRow);
+  }
+
+  Future<Order> addStaffOrder({
+    required String sessionId,
+    required int tableId,
+    required List<Map<String, dynamic>> items,
+  }) =>
+      placeOrder(sessionId: sessionId, tableId: tableId, items: items);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // IMAGE UPLOAD
+  // ══════════════════════════════════════════════════════════════════════════
 
   Future<String?> uploadProductImage({
     required String filePath,
     required String productName,
   }) async {
+    if (filePath.trim().isEmpty) return null;
     try {
-      final String extension = filePath.split('.').last;
-      final String fileName =
-          '${productName.toLowerCase().replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      final safeName = productName
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+          .replaceAll(RegExp(r'^_+|_+$'), '');
+      final ext = filePath.contains('.') ? filePath.split('.').last : 'png';
+      final fileName = '${safeName.isEmpty ? 'product' : safeName}_'
+          '${DateTime.now().millisecondsSinceEpoch}.$ext';
 
       if (kIsWeb) {
-        // For web, download the image and upload its bytes.
-        final response = await http.get(Uri.parse(filePath));
-        if (response.statusCode != 200) {
-          throw Exception('Failed to download image: ${response.statusCode}');
+        final res = await http.get(Uri.parse(filePath));
+        if (res.statusCode != 200) {
+          throw Exception('Failed to fetch image: ${res.statusCode}');
         }
-
         await _client.storage.from('product-images').uploadBinary(
               fileName,
-              response.bodyBytes,
-              fileOptions: const FileOptions(
-                cacheControl: '3600',
-                upsert: false,
-              ),
+              res.bodyBytes,
+              fileOptions: const FileOptions(cacheControl: '3600'),
             );
       } else {
-        // For mobile/desktop: read file and upload bytes
-        final file = File(filePath);
-        final bytes = await file.readAsBytes();
-
+        final bytes = await File(filePath).readAsBytes();
         await _client.storage.from('product-images').uploadBinary(
               fileName,
-              bytes,
-              fileOptions: const FileOptions(
-                cacheControl: '3600',
-                upsert: false,
-              ),
+              Uint8List.fromList(bytes),
+              fileOptions: const FileOptions(cacheControl: '3600'),
             );
       }
 
-      final String publicUrl =
-          _client.storage.from('product-images').getPublicUrl(fileName);
-      print('✅ Image uploaded successfully: $publicUrl');
-      return publicUrl;
+      return _client.storage.from('product-images').getPublicUrl(fileName);
     } catch (e) {
-      print('❌ Error uploading image: $e');
+      debugPrint('uploadProductImage error: $e');
       return null;
     }
   }
 
-  Future<void> deleteProductImage(String imageUrl) async {
-    try {
-      final fileName = imageUrl.split('/').last;
-      await _client.storage.from('product-images').remove([fileName]);
-      print('✅ Image deleted successfully');
-    } catch (e) {
-      print('❌ Error deleting image: $e');
-    }
-  }
+  // ══════════════════════════════════════════════════════════════════════════
+  // REPORTS
+  // ══════════════════════════════════════════════════════════════════════════
 
-  // ============================================================
-  // PRODUCT OPERATIONS
-  // ============================================================
-
-  Future<List<Product>> getProducts() async {
-    try {
-      final response = await _client
-          .from('products')
-          .select()
-          .eq('is_available', true)
-          .order('name');
-
-      final List<Product> products = [];
-      for (var item in response) {
-        final map = item as Map<String, dynamic>;
-        products.add(Product.fromMap(map));
-      }
-      return products;
-    } catch (e) {
-      print('Error in getProducts: $e');
-      throw Exception('Failed to fetch products: $e');
-    }
-  }
-
-  Future<List<Product>> getAllProducts() async {
-    try {
-      final response = await _client.from('products').select().order('name');
-
-      final List<Product> products = [];
-      for (var item in response) {
-        final map = item as Map<String, dynamic>;
-        products.add(Product.fromMap(map));
-      }
-      return products;
-    } catch (e) {
-      print('Error in getAllProducts: $e');
-      throw Exception('Failed to fetch all products: $e');
-    }
-  }
-
-  Future<Product?> getProductById(int id) async {
-    try {
-      final response = await _client
-          .from('products')
-          .select()
-          .eq('id', id)
-          .eq('is_available', true)
-          .maybeSingle();
-
-      if (response == null) return null;
-
-      final map = response as Map<String, dynamic>;
-      return Product.fromMap(map);
-    } catch (e) {
-      print('Error in getProductById: $e');
-      throw Exception('Failed to fetch product: $e');
-    }
-  }
-
-  // ============================================================
-  // PRODUCT MANAGEMENT OPERATIONS
-  // ============================================================
-
-  Future<void> addProduct({
-    required String name,
-    String? description,
-    required double price,
-    String? category,
-    String? imageUrl,
-    bool isAvailable = true,
+  Future<List<OrderWithItems>> getOrdersInRange({
+    required DateTime from,
+    required DateTime to,
   }) async {
-    try {
-      await _client.from('products').insert({
-        'name': name,
-        'description': description,
-        'price': price,
-        'category': category,
-        'image_url': imageUrl,
-        'is_available': isAvailable,
-      });
-      print('✅ Product added successfully: $name');
-    } catch (e) {
-      print('Error in addProduct: $e');
-      throw Exception('Failed to add product: $e');
+    if (from.isAfter(to)) return const [];
+    final rows = await _client
+        .from('orders')
+        .select()
+        .gte('created_at', from.toUtc().toIso8601String())
+        .lte('created_at', to.toUtc().toIso8601String())
+        .order('created_at', ascending: false);
+
+    final result = <OrderWithItems>[];
+    for (final row in rows) {
+      final order = Order.fromMap(row);
+      final items = await _getItemsForOrder(order.id);
+      result.add(OrderWithItems(order: order, items: items));
     }
+    return result;
   }
 
-  Future<void> updateProduct({
-    required int id,
-    required String name,
-    String? description,
-    required double price,
-    String? category,
-    String? imageUrl,
-    bool isAvailable = true,
-  }) async {
-    try {
-      await _client.from('products').update({
-        'name': name,
-        'description': description,
-        'price': price,
-        'category': category,
-        'image_url': imageUrl,
-        'is_available': isAvailable,
-      }).eq('id', id);
-      print('✅ Product updated successfully: $name');
-    } catch (e) {
-      print('Error in updateProduct: $e');
-      throw Exception('Failed to update product: $e');
-    }
-  }
-
-  Future<void> updateProductAvailability(int id, bool isAvailable) async {
-    try {
-      await _client.from('products').update({
-        'is_available': isAvailable,
-      }).eq('id', id);
-      print('✅ Product availability updated: $id -> $isAvailable');
-    } catch (e) {
-      print('Error in updateProductAvailability: $e');
-      throw Exception('Failed to update product availability: $e');
-    }
-  }
-
-  Future<bool> productHasOrders(int productId) async {
-    try {
-      final response = await _client
-          .from('order_items')
-          .select('id')
-          .eq('product_id', productId)
-          .limit(1);
-
-      return response.isNotEmpty;
-    } catch (e) {
-      print('Error checking product orders: $e');
-      return true;
-    }
-  }
-
-  Future<void> deleteProduct(int id) async {
-    try {
-      final hasOrders = await productHasOrders(id);
-
-      if (hasOrders) {
-        throw Exception(
-            'Cannot delete product with existing orders. Hide it instead.');
-      }
-
-      final product = await _client
-          .from('products')
-          .select('image_url')
-          .eq('id', id)
-          .maybeSingle();
-
-      await _client.from('products').delete().eq('id', id);
-
-      if (product != null && product['image_url'] != null) {
-        await deleteProductImage(product['image_url']);
-      }
-
-      print('✅ Product deleted successfully: $id');
-    } catch (e) {
-      print('Error in deleteProduct: $e');
-      throw Exception('Failed to delete product: $e');
-    }
-  }
-
-  // ============================================================
-  // TABLE OPERATIONS
-  // ============================================================
-
-  Future<List<CoffeeTable>> getTables() async {
-    try {
-      final response =
-          await _client.from('tables').select().order('table_number');
-
-      final List<CoffeeTable> tables = [];
-      for (var item in response) {
-        final map = item as Map<String, dynamic>;
-        tables.add(CoffeeTable.fromMap(map));
-      }
-      return tables;
-    } catch (e) {
-      print('Error in getTables: $e');
-      throw Exception('Failed to fetch tables: $e');
-    }
-  }
-
-  Future<CoffeeTable?> getTableById(int id) async {
-    try {
-      final response =
-          await _client.from('tables').select().eq('id', id).maybeSingle();
-
-      if (response == null) return null;
-
-      final map = response as Map<String, dynamic>;
-      return CoffeeTable.fromMap(map);
-    } catch (e) {
-      print('Error in getTableById: $e');
-      throw Exception('Failed to fetch table: $e');
-    }
-  }
-
-  Future<void> updateTableStatus(int tableId, String status) async {
-    try {
-      print('🔄 Updating table $tableId status to: $status');
-      await _client.from('tables').update({'status': status}).eq('id', tableId);
-      print('✅ Update command sent for table $tableId');
-
-      final verify =
-          await _client.from('tables').select().eq('id', tableId).single();
-      print('📊 Verified table status: ${verify['status']}');
-
-      if (verify['status'] != status) {
-        throw Exception('Status update failed');
-      }
-    } catch (e) {
-      print('❌ Error in updateTableStatus: $e');
-      throw Exception('Failed to update table status: $e');
-    }
-  }
-
-  // ============================================================
-  // ORDER OPERATIONS
-  // ============================================================
-
-  Future<Order?> getActiveOrder(int tableId) async {
-    try {
-      final response = await _client
-          .from('orders')
-          .select()
-          .eq('table_id', tableId)
-          .eq('status', 'open')
-          .maybeSingle();
-
-      if (response == null) return null;
-
-      final map = response as Map<String, dynamic>;
-      return Order.fromMap(map);
-    } catch (e) {
-      print('Error in getActiveOrder: $e');
-      throw Exception('Failed to fetch active order: $e');
-    }
-  }
-
-  Future<Order> createOrder(int tableId) async {
-    try {
-      print('🔄 Creating order for table: $tableId');
-
-      final existingOrder = await getActiveOrder(tableId);
-      if (existingOrder != null) {
-        print(
-            '⚠️ Table $tableId already has an open order: ${existingOrder.id}');
-        await updateTableStatus(tableId, 'occupied');
-        return existingOrder;
-      }
-
-      final String orderId = _uuid.v4();
-
-      final response = await _client
-          .from('orders')
-          .insert({
-            'id': orderId,
-            'table_id': tableId,
-            'status': 'open',
-            'total': 0.0,
-          })
-          .select()
-          .single();
-
-      print('✅ Order created: ${response['id']}');
-
-      await _client
-          .from('tables')
-          .update({'status': 'occupied'}).eq('id', tableId);
-
-      print('✅ Table $tableId status set to occupied');
-
-      final verifyTable =
-          await _client.from('tables').select().eq('id', tableId).single();
-
-      print(
-          '📊 Table ${verifyTable['table_number']} status after update: ${verifyTable['status']}');
-
-      if (verifyTable['status'] != 'occupied') {
-        print('⚠️ WARNING: Table status is still ${verifyTable['status']}');
-        await _client
-            .from('tables')
-            .update({'status': 'occupied'}).eq('id', tableId);
-      }
-
-      final map = response as Map<String, dynamic>;
-      return Order.fromMap(map);
-    } catch (e) {
-      print('❌ Error in createOrder: $e');
-      try {
-        await _client
-            .from('tables')
-            .update({'status': 'occupied'}).eq('id', tableId);
-        print('✅ Table status updated after error');
-      } catch (e2) {
-        print('❌ Failed to update table status even after error: $e2');
-      }
-      throw Exception('Failed to create order: $e');
-    }
-  }
-
-// services/supabase_service.dart - Updated getOrderItems
-
-  Future<List<OrderItem>> getOrderItems(String orderId) async {
-    try {
-      final response = await _client
-          .from('order_items')
-          .select('*, products(*)') // This joins the products table
-          .eq('order_id', orderId);
-
-      final List<OrderItem> items = [];
-      for (var item in response) {
-        final map = item as Map<String, dynamic>;
-
-        // Create OrderItem from map
-        final orderItem = OrderItem.fromMap(map);
-
-        // If product data is included in the join, create Product object
-        if (map['products'] != null) {
-          final productMap = map['products'] as Map<String, dynamic>;
-          final product = Product.fromMap(productMap);
-          orderItem.product = product;
-        }
-
-        items.add(orderItem);
-      }
-      return items;
-    } catch (e) {
-      print('Error in getOrderItems: $e');
-      throw Exception('Failed to fetch order items: $e');
-    }
-  }
-
-  Future<OrderItem> addOrderItem(String orderId, int productId,
-      {int quantity = 1}) async {
-    try {
-      final product = await getProductById(productId);
-      if (product == null) {
-        throw Exception('Product not found or unavailable');
-      }
-
-      final existingItems = await _client
-          .from('order_items')
-          .select()
-          .eq('order_id', orderId)
-          .eq('product_id', productId)
-          .maybeSingle();
-
-      if (existingItems != null) {
-        final currentQuantity = existingItems['quantity'] as int;
-        final newQuantity = currentQuantity + quantity;
-
-        await _client
-            .from('order_items')
-            .update({'quantity': newQuantity}).eq('id', existingItems['id']);
-
-        final updatedItem = await _client
-            .from('order_items')
-            .select()
-            .eq('id', existingItems['id'])
-            .single();
-
-        await _updateOrderTotal(orderId);
-
-        final map = updatedItem as Map<String, dynamic>;
-        return OrderItem.fromMap(map);
-      }
-
-      final String itemId = _uuid.v4();
-
-      final response = await _client
-          .from('order_items')
-          .insert({
-            'id': itemId,
-            'order_id': orderId,
-            'product_id': productId,
-            'quantity': quantity,
-            'unit_price': product.price,
-          })
-          .select()
-          .single();
-
-      await _updateOrderTotal(orderId);
-
-      final map = response as Map<String, dynamic>;
-      return OrderItem.fromMap(map);
-    } catch (e) {
-      print('Error in addOrderItem: $e');
-      throw Exception('Failed to add order item: $e');
-    }
-  }
-
-  Future<void> _updateOrderTotal(String orderId) async {
-    try {
-      final items = await _client
-          .from('order_items')
-          .select('quantity, unit_price')
-          .eq('order_id', orderId);
-
-      double total = 0.0;
-      for (var item in items) {
-        final map = item as Map<String, dynamic>;
-        final quantity = map['quantity'] as int;
-        final unitPrice = (map['unit_price'] as num).toDouble();
-        total += quantity * unitPrice;
-      }
-
-      await _client.from('orders').update({'total': total}).eq('id', orderId);
-    } catch (e) {
-      print('Error in _updateOrderTotal: $e');
-      throw Exception('Failed to update order total: $e');
-    }
-  }
-
-  Future<Order> closeOrder(String orderId) async {
-    try {
-      final orderResponse =
-          await _client.from('orders').select().eq('id', orderId).single();
-
-      final orderMap = orderResponse as Map<String, dynamic>;
-      final order = Order.fromMap(orderMap);
-
-      final now = DateTime.now().toIso8601String();
-      final updatedOrder = await _client
-          .from('orders')
-          .update({
-            'status': 'closed',
-            'closed_at': now,
-          })
-          .eq('id', orderId)
-          .select()
-          .single();
-
-      await updateTableStatus(order.tableId, 'available');
-
-      final map = updatedOrder as Map<String, dynamic>;
-      return Order.fromMap(map);
-    } catch (e) {
-      print('Error in closeOrder: $e');
-      throw Exception('Failed to close order: $e');
-    }
-  }
-
-// services/supabase_service.dart - Updated getCompleteOrder
-
-  Future<Map<String, dynamic>> getCompleteOrder(String orderId) async {
-    try {
-      final orderData =
-          await _client.from('orders').select().eq('id', orderId).single();
-
-      final orderMap = orderData as Map<String, dynamic>;
-      final order = Order.fromMap(orderMap);
-
-      final tableData = await _client
-          .from('tables')
-          .select()
-          .eq('id', order.tableId)
-          .single();
-
-      final tableMap = tableData as Map<String, dynamic>;
-      final table = CoffeeTable.fromMap(tableMap);
-
-      // Get order items with product data
-      final itemsData = await _client
-          .from('order_items')
-          .select('*, products(*)')
-          .eq('order_id', orderId);
-
-      final items = <OrderItem>[];
-      for (var itemData in itemsData) {
-        final map = itemData as Map<String, dynamic>;
-        final item = OrderItem.fromMap(map);
-
-        // Add product data if available
-        if (map['products'] != null) {
-          final productMap = map['products'] as Map<String, dynamic>;
-          final product = Product.fromMap(productMap);
-          item.product = product;
-        }
-
-        items.add(item);
-      }
-
-      return {
-        'order': order,
-        'table': table,
-        'items': items,
-      };
-    } catch (e) {
-      print('Error in getCompleteOrder: $e');
-      throw Exception('Failed to get complete order: $e');
-    }
-  }
-
-  // ============================================================
-  // REPORT METHODS
-  // ============================================================
-
-// services/supabase_service.dart - Updated getAllOrders
-
-  Future<List<Map<String, dynamic>>> getAllOrders() async {
-    try {
-      final response = await _client
-          .from('orders')
-          .select('*, tables(*)')
-          .order('created_at', ascending: false);
-
-      final List<Map<String, dynamic>> orders = [];
-      for (var orderData in response) {
-        final orderMap = orderData as Map<String, dynamic>;
-
-        // Get items for this order with product data
-        final itemsData = await _client
-            .from('order_items')
-            .select('*, products(*)')
-            .eq('order_id', orderMap['id']);
-
-        final items = <OrderItem>[];
-        for (var itemData in itemsData) {
-          final map = itemData as Map<String, dynamic>;
-          final item = OrderItem.fromMap(map);
-
-          if (map['products'] != null) {
-            final productMap = map['products'] as Map<String, dynamic>;
-            final product = Product.fromMap(productMap);
-            item.product = product;
-          }
-
-          items.add(item);
-        }
-
-        // Add items to the order data
-        orderMap['items'] = items;
-        orders.add(orderMap);
-      }
-      return orders;
-    } catch (e) {
-      print('Error in getAllOrders: $e');
-      throw Exception('Failed to fetch orders: $e');
-    }
-  }
-
-  // services/supabase_service.dart - Helper method
-
-  Future<List<OrderItem>> getOrderItemsWithProducts(String orderId) async {
-    try {
-      final response = await _client
-          .from('order_items')
-          .select('*, products(*)')
-          .eq('order_id', orderId);
-
-      final List<OrderItem> items = [];
-      for (var item in response) {
-        final map = item as Map<String, dynamic>;
-
-        // Create OrderItem from map
-        final orderItem = OrderItem.fromMap(map);
-
-        // If product data is included in the join, create Product object
-        if (map['products'] != null) {
-          final productMap = map['products'] as Map<String, dynamic>;
-          final product = Product.fromMap(productMap);
-          orderItem.product = product;
-        }
-
-        items.add(orderItem);
-      }
-      return items;
-    } catch (e) {
-      print('Error in getOrderItemsWithProducts: $e');
-      throw Exception('Failed to fetch order items: $e');
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> getOrdersByDateRange(
-    DateTime startDate,
-    DateTime endDate,
-  ) async {
-    try {
-      final response = await _client
-          .from('orders')
-          .select('*, tables(*)')
-          .gte('created_at', startDate.toIso8601String())
-          .lte('created_at', endDate.toIso8601String())
-          .order('created_at', ascending: false);
-
-      final List<Map<String, dynamic>> orders = [];
-      for (var item in response) {
-        orders.add(item as Map<String, dynamic>);
-      }
-      return orders;
-    } catch (e) {
-      print('Error in getOrdersByDateRange: $e');
-      throw Exception('Failed to fetch orders: $e');
-    }
-  }
-
-  Future<int> getTotalOrdersCount() async {
-    try {
-      final response = await _client.from('orders').select('id');
-      return response.length;
-    } catch (e) {
-      print('Error in getTotalOrdersCount: $e');
-      return 0;
-    }
-  }
-
-  Future<int> getTodayOrdersCount() async {
-    try {
-      final today = DateTime.now().toIso8601String().substring(0, 10);
-      final response =
-          await _client.from('orders').select('id').gte('created_at', today);
-      return response.length;
-    } catch (e) {
-      print('Error in getTodayOrdersCount: $e');
-      return 0;
-    }
-  }
-
-  Future<double> getTotalRevenue() async {
-    try {
-      final response =
-          await _client.from('orders').select('total').eq('status', 'closed');
-
-      double total = 0;
-      for (var order in response) {
-        total += (order['total'] as num).toDouble();
-      }
-      return total;
-    } catch (e) {
-      print('Error in getTotalRevenue: $e');
-      return 0;
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> getOrdersByTable(int tableId) async {
-    try {
-      final response = await _client
-          .from('orders')
-          .select('*, tables(*)')
-          .eq('table_id', tableId)
-          .order('created_at', ascending: false);
-
-      final List<Map<String, dynamic>> orders = [];
-      for (var item in response) {
-        orders.add(item as Map<String, dynamic>);
-      }
-      return orders;
-    } catch (e) {
-      print('Error in getOrdersByTable: $e');
-      throw Exception('Failed to fetch orders: $e');
-    }
-  }
-
-  Future<Map<String, dynamic>> getOrderStatistics() async {
-    try {
-      final totalOrders = await getTotalOrdersCount();
-      final todayOrders = await getTodayOrdersCount();
-      final totalRevenue = await getTotalRevenue();
-      final tables = await getTables();
-      final occupiedTables = tables.where((t) => t.isOccupied).length;
-
-      return {
-        'totalOrders': totalOrders,
-        'todayOrders': todayOrders,
-        'totalRevenue': totalRevenue,
-        'occupiedTables': occupiedTables,
-        'totalTables': tables.length,
-      };
-    } catch (e) {
-      print('Error in getOrderStatistics: $e');
-      throw Exception('Failed to get order statistics: $e');
-    }
+  Future<List<Map<String, dynamic>>> getAllOrdersRaw() async {
+    final rows = await _client
+        .from('orders')
+        .select('*, tables(*)')
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
   }
 }

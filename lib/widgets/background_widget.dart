@@ -1,6 +1,6 @@
-// widgets/background_widget.dart
 import 'package:flutter/material.dart';
 
+/// Wraps a screen with the subtle coffee-shop background image.
 class BackgroundWidget extends StatelessWidget {
   final Widget child;
   final double opacity;
@@ -8,20 +8,18 @@ class BackgroundWidget extends StatelessWidget {
   const BackgroundWidget({
     super.key,
     required this.child,
-    this.opacity = 0.08,
+    this.opacity = 0.06,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      height: double.infinity,
       decoration: BoxDecoration(
+        color: const Color(0xFFF7F3F0),
         image: DecorationImage(
           image: const AssetImage('assets/images/background.png'),
           fit: BoxFit.cover,
           opacity: opacity,
-          alignment: Alignment.center,
         ),
       ),
       child: child,
