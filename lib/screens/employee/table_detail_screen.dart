@@ -1,3 +1,4 @@
+// screens\employee\table_detail_screen.dart
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/app_colors.dart';
@@ -66,8 +67,6 @@ class _TableDetailScreenState extends State<TableDetailScreen> {
     _service.watchOrdersForSession(widget.session.id).listen(
       (rounds) {
         if (!mounted) return;
-        // Only update if the list actually changed — prevents flicker
-        // and double-renders on duplicate realtime events.
         if (_rounds.length == rounds.length &&
             _sameSignature(_rounds, rounds)) {
           return;
@@ -78,7 +77,6 @@ class _TableDetailScreenState extends State<TableDetailScreen> {
     );
   }
 
-  /// Cheap signature to compare two lists without deep equality on every field.
   bool _sameSignature(List<OrderWithItems> a, List<OrderWithItems> b) {
     for (var i = 0; i < a.length; i++) {
       if (a[i].order.id != b[i].order.id) return false;
@@ -104,14 +102,12 @@ class _TableDetailScreenState extends State<TableDetailScreen> {
     );
     if (ok != true) return;
 
-    // Snapshot before we lose the data.
     final snapshot = List<OrderWithItems>.from(_rounds);
 
     try {
       await _service.closeTable(widget.session.id);
       if (!mounted) return;
 
-      // Show the receipt, then pop back to the dashboard.
       await Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => ReceiptScreen(
@@ -162,8 +158,11 @@ class _TableDetailScreenState extends State<TableDetailScreen> {
   }
 
   void _showQr() {
-    final qrText =
-        '${AppConstants.customerWebBaseUrl}/#/menu?table=${widget.table.tableNumber}';
+    // Use the runtime customer base URL — on Vercel this becomes
+    // https://your-app.vercel.app, on LAN it becomes http://192.168.x.x:5004,
+    // etc. Always points at a URL that the cashier's device just loaded,
+    // so it is guaranteed reachable from a phone on the same network.
+    final qrText = AppConstants.customerMenuUrlFor(widget.table.tableNumber);
 
     showDialog(
       context: context,
@@ -216,6 +215,12 @@ class _TableDetailScreenState extends State<TableDetailScreen> {
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  qrText,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
                 ),
                 const SizedBox(height: 4),
                 const Text(

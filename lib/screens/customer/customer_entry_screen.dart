@@ -1,3 +1,6 @@
+// screens\customer\customer_entry_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
@@ -9,10 +12,6 @@ import '../../widgets/loading_widget.dart';
 import 'scan_screen.dart';
 import 'customer_menu_screen.dart';
 
-/// Entry point for customer mode.
-///
-/// - If [tableNumber] is provided (web deep link or from Scan), we validate it.
-/// - Otherwise we show the Scan QR screen.
 class CustomerEntryScreen extends StatefulWidget {
   final int? tableNumber;
 
@@ -27,32 +26,80 @@ class _CustomerEntryScreenState extends State<CustomerEntryScreen> {
 
   bool _loading = false;
   String? _error;
+  String? _errorHint;
+  bool _networkIssue = false;
+
   CoffeeTable? _table;
   TableSession? _session;
+
+  Timer? _watchdog;
+
+  static const _watchdogDuration = Duration(seconds: 12);
 
   @override
   void initState() {
     super.initState();
-    if (widget.tableNumber != null) {
-      _validate(widget.tableNumber!);
+    final n = widget.tableNumber;
+    if (n != null && n > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _validate(n);
+      });
     }
   }
 
+  @override
+  void dispose() {
+    _watchdog?.cancel();
+    super.dispose();
+  }
+
+  /// Watchdog: if `_loading` is still true after N seconds, force the
+  /// error state so the user is never trapped on a spinner.
+  void _armWatchdog() {
+    _watchdog?.cancel();
+    _watchdog = Timer(_watchdogDuration, () {
+      if (!mounted) return;
+      if (!_loading) return;
+      setState(() {
+        _loading = false;
+        _networkIssue = true;
+        _error = 'Cannot reach the coffee shop.';
+        _errorHint =
+            'The request took too long. Check your Wi-Fi / internet, then '
+            'tap Try again.';
+      });
+    });
+  }
+
   Future<void> _validate(int tableNumber) async {
+    if (!mounted) return;
+    _armWatchdog();
     setState(() {
       _loading = true;
       _error = null;
+      _errorHint = null;
+      _networkIssue = false;
     });
+
     try {
-      final table = await _service.getTableByNumber(tableNumber);
+      // ── Step 1: table ────────────────────────────────────────────
+      final table = await _service
+          .getTableByNumber(tableNumber)
+          .timeout(const Duration(seconds: 10));
+      if (!mounted) return;
+
       if (table == null) {
+        _watchdog?.cancel();
         setState(() {
-          _error = 'Table $tableNumber does not exist.';
           _loading = false;
+          _error = 'Table $tableNumber does not exist.';
+          _errorHint = 'Check the QR code or ask a member of staff for help.';
         });
         return;
       }
+
       if (!table.isOpen) {
+        _watchdog?.cancel();
         setState(() {
           _table = table;
           _session = null;
@@ -60,22 +107,42 @@ class _CustomerEntryScreenState extends State<CustomerEntryScreen> {
         });
         return;
       }
-      final session = await _service.getActiveSessionForTable(tableNumber);
+
+      // ── Step 2: session ───────────────────────────────────────────
+      final session = await _service
+          .getActiveSessionForTable(tableNumber)
+          .timeout(const Duration(seconds: 10));
+      if (!mounted) return;
+
+      _watchdog?.cancel();
       setState(() {
         _table = table;
         _session = session;
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+      _watchdog?.cancel();
+      final s = e.toString();
+      final isNetwork = s.contains('TimeoutException') ||
+          s.contains('SocketException') ||
+          s.contains('ClientException') ||
+          s.contains('Failed host lookup') ||
+          s.contains('Connection') ||
+          s.contains('HandshakeException');
       setState(() {
-        _error = 'Failed to open the table: $e';
         _loading = false;
+        _networkIssue = isNetwork;
+        _error = isNetwork
+            ? 'Cannot reach the coffee shop.'
+            : 'Failed to open the table.';
+        _errorHint =
+            isNetwork ? 'Please check your connection and try again.' : s;
       });
     }
   }
 
   void _onScanned(String raw) {
-    // QR content format: "COFFEE_TABLE:2"
     final parts = raw.split(':');
     if (parts.length != 2) {
       _showSnack('Invalid QR code.');
@@ -94,13 +161,29 @@ class _CustomerEntryScreenState extends State<CustomerEntryScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  void _retry() {
+    final n = widget.tableNumber;
+    if (n != null) {
+      _validate(n);
+    } else {
+      setState(() {
+        _table = null;
+        _session = null;
+        _error = null;
+        _errorHint = null;
+        _networkIssue = false;
+        _loading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // No table yet → show the scanner.
-    if (widget.tableNumber == null && _table == null && !_loading) {
-      return ScanScreen(
-        onScanned: _onScanned,
-      );
+    if (widget.tableNumber == null &&
+        _table == null &&
+        !_loading &&
+        _error == null) {
+      return ScanScreen(onScanned: _onScanned);
     }
 
     if (_loading) {
@@ -115,33 +198,40 @@ class _CustomerEntryScreenState extends State<CustomerEntryScreen> {
         backgroundColor: AppColors.cream,
         appBar: AppBar(title: const Text('Coffee Shop')),
         body: EmptyState(
-          icon: Icons.error_outline,
-          title: 'Something went wrong',
+          icon: _networkIssue ? Icons.wifi_off : Icons.error_outline,
+          title: _networkIssue ? 'Connection problem' : 'Something went wrong',
           subtitle: _error,
-          action: ElevatedButton(
-            onPressed: () {
-              if (widget.tableNumber != null) {
-                _validate(widget.tableNumber!);
-              } else {
-                setState(() {
-                  _table = null;
-                  _session = null;
-                  _error = null;
-                });
-              }
-            },
-            child: const Text('Try again'),
+          action: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_errorHint != null) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    _errorHint!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              ElevatedButton(
+                onPressed: _retry,
+                child: const Text('Try again'),
+              ),
+            ],
           ),
         ),
       );
     }
 
-    // Table exists but is closed → friendly "ask staff" message.
     if (_table != null && (_session == null || _session!.isClosed)) {
       return _TableClosedView(tableNumber: _table!.tableNumber);
     }
 
-    // Table is open → menu.
     if (_table != null && _session != null) {
       return CustomerMenuScreen(
         table: _table!,
@@ -149,10 +239,7 @@ class _CustomerEntryScreenState extends State<CustomerEntryScreen> {
       );
     }
 
-    return const Scaffold(
-      backgroundColor: AppColors.cream,
-      body: LoadingWidget(),
-    );
+    return ScanScreen(onScanned: _onScanned);
   }
 }
 

@@ -1,3 +1,4 @@
+// core\app_theme.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
@@ -18,17 +19,32 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.cream,
     );
 
-    return base.copyWith(
-      textTheme: GoogleFonts.poppinsTextTheme(base.textTheme).apply(
+    // Google Fonts on web fetches font files + manifests from
+    // fonts.gstatic.com at runtime. If that request fails (Vercel cold
+    // start, CORS, offline, or engine already erroring) the theme build
+    // throws and the entire app fails to paint. We guard it here so the
+    // worst case is a system font, never a blank screen.
+    TextTheme textTheme;
+    try {
+      textTheme = GoogleFonts.poppinsTextTheme(base.textTheme).apply(
         bodyColor: AppColors.textPrimary,
         displayColor: AppColors.textPrimary,
-      ),
+      );
+    } catch (_) {
+      textTheme = base.textTheme.apply(
+        bodyColor: AppColors.textPrimary,
+        displayColor: AppColors.textPrimary,
+      );
+    }
+
+    return base.copyWith(
+      textTheme: textTheme,
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.espresso,
         foregroundColor: AppColors.white,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.poppins(
+        titleTextStyle: _poppins(
           color: AppColors.white,
           fontSize: 20,
           fontWeight: FontWeight.w600,
@@ -51,7 +67,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: GoogleFonts.poppins(
+          textStyle: _poppins(
             fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
@@ -65,7 +81,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          textStyle: GoogleFonts.poppins(
+          textStyle: _poppins(
             fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
@@ -74,7 +90,7 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.coffee,
-          textStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          textStyle: _poppins(fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -113,8 +129,8 @@ class AppTheme {
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.white,
         selectedColor: AppColors.coffee,
-        labelStyle: GoogleFonts.poppins(fontSize: 13),
-        secondaryLabelStyle: GoogleFonts.poppins(
+        labelStyle: _poppins(fontSize: 13),
+        secondaryLabelStyle: _poppins(
           fontSize: 13,
           color: AppColors.white,
         ),
@@ -124,5 +140,33 @@ class AppTheme {
         ),
       ),
     );
+  }
+
+  /// Tries Poppins via GoogleFonts; falls back to the default theme font
+  /// if the runtime fetch throws (offline, CORS, Vercel cold-start, etc).
+  static TextStyle _poppins({
+    double? fontSize,
+    FontWeight? fontWeight,
+    Color? color,
+    double? letterSpacing,
+    double? height,
+  }) {
+    try {
+      return GoogleFonts.poppins(
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: color,
+        letterSpacing: letterSpacing,
+        height: height,
+      );
+    } catch (_) {
+      return TextStyle(
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: color,
+        letterSpacing: letterSpacing,
+        height: height,
+      );
+    }
   }
 }

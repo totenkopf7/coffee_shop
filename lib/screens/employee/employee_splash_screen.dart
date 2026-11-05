@@ -18,16 +18,19 @@ class _EmployeeSplashScreenState extends State<EmployeeSplashScreen> {
   @override
   void initState() {
     super.initState();
-    _afterSplash();
+    _go();
   }
 
-  Future<void> _afterSplash() async {
-    // Small delay for the branded splash animation.
+  Future<void> _go() async {
     await Future.delayed(const Duration(milliseconds: 1400));
     if (!mounted) return;
 
-    // Refresh state in case something changed (e.g. another tab logged out).
-    await AuthService.instance.load();
+    // Timeout in case SharedPreferences is stuck on a slow device.
+    try {
+      await AuthService.instance.load().timeout(const Duration(seconds: 3));
+    } catch (_) {
+      // Ignore — auth state defaults to logged out, which is safe.
+    }
     if (!mounted) return;
 
     final next = AuthService.instance.isLoggedIn
@@ -63,15 +66,30 @@ class _EmployeeSplashScreenState extends State<EmployeeSplashScreen> {
               style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 40),
-            Lottie.asset(
-              'assets/animations/loading.json',
+            // White-outlined fallback spinner is always visible, even if
+            // Lottie fails to load. The Lottie animation sits on top.
+            SizedBox(
               width: 90,
               height: 90,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const SizedBox(
-                width: 30,
-                height: 30,
-                child: CircularProgressIndicator(color: Colors.white),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                  Lottie.asset(
+                    'assets/animations/loading.json',
+                    width: 90,
+                    height: 90,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ],
               ),
             ),
           ],
