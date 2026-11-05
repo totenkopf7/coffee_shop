@@ -3,6 +3,9 @@
   "outputDirectory": "build/web",
   "installCommand": "echo 'skip default install'",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
+    {
+      "source": "/((?!flutter_service_worker\\.js|main\\.dart\\.js|flutter\\.js|manifest\\.json|assets/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
