@@ -1,5 +1,5 @@
 {
-  "buildCommand": "flutter build web --release --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY",
+  "buildCommand": "chmod +x build.sh && ./build.sh",
   "outputDirectory": "build/web",
-  "installCommand": "if [ ! -d \"flutter\" ]; then git clone https://github.com/flutter/flutter.git -b stable; fi && export PATH=\"$PATH:$PWD/flutter/bin\" && flutter pub get"
+  "installCommand": "echo 'skip default install'"
 }
