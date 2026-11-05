@@ -17,11 +17,6 @@ Future<void> main() async {
     FlutterError.presentError(details);
   };
 
-  // ── 1. Resolve Supabase config, best-effort .env ─────────────────────────
-  // Priority:
-  //   1) --dart-define=SUPABASE_URL=... / SUPABASE_ANON_KEY=... (Vercel-safe)
-  //   2) .env file (dev, LAN)
-  // If neither is present we show a clear config error.
   String url = const String.fromEnvironment('SUPABASE_URL');
   String anon = const String.fromEnvironment('SUPABASE_ANON_KEY');
 
@@ -42,7 +37,7 @@ Future<void> main() async {
           title: 'Missing configuration',
           message: 'SUPABASE_URL or SUPABASE_ANON_KEY was not found.\n\n'
               'On Vercel: add them under Environment Variables and build with\n'
-              '  flutter build web --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...\n\n'
+              '  flutter build web --release --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...\n\n'
               'Locally: put them in .env and ensure `.env` is listed under\n'
               '`flutter: assets:` in pubspec.yaml.',
         ),
@@ -72,9 +67,6 @@ Future<void> main() async {
   runApp(const CoffeeShopApp());
 }
 
-/// Minimal MaterialApp used before `AppTheme` is fully trusted (i.e. before
-/// we know Google Fonts can be fetched). Uses only the built-in theme so
-/// nothing in here can throw for a network reason.
 class _BootstrapApp extends StatelessWidget {
   final Widget child;
   const _BootstrapApp({required this.child});
@@ -113,9 +105,7 @@ class _ConfigErrorScreen extends StatelessWidget {
                   title,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+                      fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -162,15 +152,13 @@ class _RootRouter extends StatefulWidget {
 class _RootRouterState extends State<_RootRouter> {
   bool _ready = false;
   Widget _target = const SizedBox.shrink();
-
   int _attempts = 0;
-  static const int _maxAttempts = 8; // ~8 frames of retries
+  static const int _maxAttempts = 8;
   Timer? _retryTimer;
 
   @override
   void initState() {
     super.initState();
-    // Kick off the first attempt after the first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) => _tryResolve());
   }
 
@@ -180,19 +168,8 @@ class _RootRouterState extends State<_RootRouter> {
     super.dispose();
   }
 
-  /// The full URL, including query AND fragment, as a single string. This
-  /// catches all the forms a mobile browser might deliver `Uri.base` in.
-  String _rawUrl() {
-    final u = Uri.base;
-    return u.toString();
-  }
+  String _rawUrl() => Uri.base.toString();
 
-  /// Robust customer-URL detection. Accepts:
-  ///   https://host/#/menu?table=3
-  ///   https://host/menu?table=3
-  ///   https://host/?table=3
-  ///   https://host/#/menu
-  ///   .../menu/3  (future-proof)
   bool _isCustomerUrl(String raw) {
     final lower = raw.toLowerCase();
     return lower.contains('/menu') ||
@@ -201,7 +178,6 @@ class _RootRouterState extends State<_RootRouter> {
   }
 
   int? _parseTableFromUrl(String raw) {
-    // Try standard query first.
     final uri = Uri.base;
     final qTable = uri.queryParameters['table'];
     if (qTable != null) {
@@ -209,8 +185,6 @@ class _RootRouterState extends State<_RootRouter> {
       if (n != null && n > 0) return n;
     }
 
-    // Fall back to a regex over the whole URL — this catches the fragment
-    // query form `#/menu?table=3` which Uri.queryParameters won't see.
     final m = RegExp(r'table=(\d+)').firstMatch(raw);
     if (m != null) {
       final n = int.tryParse(m.group(1) ?? '');
@@ -228,8 +202,6 @@ class _RootRouterState extends State<_RootRouter> {
     debugPrint('🧭 Resolve attempt ${_attempts + 1}/$_maxAttempts: raw=$raw '
         'isCustomer=$isCustomer');
 
-    // If we can positively identify a customer URL, route NOW. No retry
-    // needed. This is the phone-QR case.
     if (isCustomer) {
       final table = _parseTableFromUrl(raw);
       debugPrint('🧭 Customer route, table=$table');
@@ -240,9 +212,6 @@ class _RootRouterState extends State<_RootRouter> {
       return;
     }
 
-    // Not a customer URL yet. On mobile Chrome the fragment can be empty
-    // on the first few frames. Retry a handful of frames before falling
-    // back to the employee route.
     if (_attempts < _maxAttempts) {
       _attempts++;
       _retryTimer?.cancel();
@@ -253,7 +222,6 @@ class _RootRouterState extends State<_RootRouter> {
       return;
     }
 
-    // Exhausted retries with no customer URL — this is the employee path.
     debugPrint('🧭 Employee route (no customer URL found after retries)');
     setState(() {
       _target = const EmployeeSplashScreen();

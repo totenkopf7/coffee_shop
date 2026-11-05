@@ -1,5 +1,8 @@
 {
   "buildCommand": "chmod +x build.sh && ./build.sh",
   "outputDirectory": "build/web",
-  "installCommand": "echo 'skip default install'"
+  "installCommand": "echo 'skip default install'",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
+  ]
 }
