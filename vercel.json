@@ -4,7 +4,7 @@
   "installCommand": "echo 'skip default install'",
   "rewrites": [
     {
-      "source": "/((?!flutter_service_worker\\.js|main\\.dart\\.js|flutter\\.js|manifest\\.json|assets/).*)",
+      "source": "/((?!flutter_service_worker\\.js|main\\.dart\\.js|flutter\\.js|manifest\\.json|assets/|canvaskit/).*)",
       "destination": "/index.html"
     }
   ]
