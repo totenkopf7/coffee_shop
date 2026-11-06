@@ -30,6 +30,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
+  flutter_launcher_icons: ^0.13.1 
+
 
 flutter:
   uses-material-design: true
@@ -42,3 +44,21 @@ flutter:
     - assets/animations/loading.json
     - assets/sounds/new_order.mp3
     - assets/sounds/check.mp3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/coffeeshop_logo.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/images/coffeeshop_logo.png"
+    background_color: "#3E2723"   # espresso brown (matches your theme)
+    theme_color: "#3E2723"
+  windows:
+    generate: true
+    image_path: "assets/images/coffeeshop_logo.png"
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: "assets/images/coffeeshop_logo.png"

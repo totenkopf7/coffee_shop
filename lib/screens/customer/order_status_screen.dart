@@ -297,48 +297,6 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
 
   Widget _buildBottomBar(bool isCheck, bool canOrderMore) {
     final t = AppLocalizations.t(context);
-
-    ButtonStyle solidButtonStyle({
-      required Color background,
-      required Color disabledBackground,
-    }) {
-      return ButtonStyle(
-        backgroundColor: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.disabled)) {
-            return disabledBackground;
-          }
-          return background;
-        }),
-        foregroundColor: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.disabled)) {
-            return Colors.white70;
-          }
-          return Colors.white;
-        }),
-        iconColor: MaterialStateProperty.all(Colors.white),
-        overlayColor: MaterialStateProperty.all(
-          Colors.white.withOpacity(0.12),
-        ),
-        elevation: MaterialStateProperty.all(0),
-        shadowColor: MaterialStateProperty.all(Colors.transparent),
-        surfaceTintColor: MaterialStateProperty.all(Colors.transparent),
-        padding: MaterialStateProperty.all(
-          const EdgeInsets.symmetric(horizontal: 12),
-        ),
-        shape: MaterialStateProperty.all(
-          RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-        textStyle: MaterialStateProperty.all(
-          const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-          ),
-        ),
-      );
-    }
-
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: const BoxDecoration(
@@ -379,45 +337,27 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             Row(
               children: [
                 Expanded(
-                  child: SizedBox(
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      style: solidButtonStyle(
-                        background: AppColors.espresso,
-                        disabledBackground: AppColors.latte,
-                      ),
-                      icon: const Icon(Icons.add, size: 18),
-                      label: Text(t.orderMore),
-                      onPressed: canOrderMore ? _orderMore : null,
-                    ),
+                  child: _SolidActionButton(
+                    label: t.orderMore,
+                    icon: Icons.add,
+                    background: AppColors.espresso,
+                    disabledBackground: AppColors.latte,
+                    enabled: canOrderMore,
+                    onPressed: _orderMore,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: SizedBox(
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      style: solidButtonStyle(
-                        background: AppColors.coffee,
-                        disabledBackground: AppColors.latte,
-                      ),
-                      icon: _requestingCheck
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.receipt_long, size: 18),
-                      label: Text(
-                        isCheck ? 'Check requested' : t.requestCheck,
-                      ),
-                      onPressed: isCheck || _requestingCheck || !canOrderMore
-                          ? null
-                          : _requestCheck,
-                    ),
+                  child: _SolidActionButton(
+                    label: isCheck ? 'Check requested' : t.requestCheck,
+                    icon: isCheck
+                        ? Icons.check_circle_outline
+                        : Icons.receipt_long,
+                    background: AppColors.coffee,
+                    disabledBackground: AppColors.latte,
+                    enabled: !isCheck && !_requestingCheck && canOrderMore,
+                    loading: _requestingCheck,
+                    onPressed: _requestCheck,
                   ),
                 ),
               ],
@@ -554,6 +494,85 @@ class _RoundBlock extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A rock-solid colored action button that cannot be tinted white by the
+/// Material 3 theme layer. Uses a plain [Container] with an explicit
+/// [BoxDecoration] for the background, wrapped in [InkWell] for the ripple.
+class _SolidActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color background;
+  final Color disabledBackground;
+  final bool enabled;
+  final bool loading;
+  final VoidCallback onPressed;
+
+  const _SolidActionButton({
+    required this.label,
+    required this.icon,
+    required this.background,
+    required this.disabledBackground,
+    required this.enabled,
+    required this.onPressed,
+    this.loading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = enabled ? background : disabledBackground;
+    final fg = Colors.white;
+
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.9,
+      child: Material(
+        color: bg,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: enabled ? onPressed : null,
+          splashColor: Colors.white.withOpacity(0.18),
+          highlightColor: Colors.white.withOpacity(0.08),
+          child: Container(
+            height: 50,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (loading)
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: fg,
+                    ),
+                  )
+                else
+                  Icon(icon, size: 18, color: fg),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: fg,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
