@@ -1,3 +1,5 @@
+// widgets/loading_widget.dart
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
@@ -13,13 +15,20 @@ class LoadingWidget extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Lottie.asset(
-            'assets/animations/loading.json',
-            width: size,
-            height: size,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const CircularProgressIndicator(),
-          ),
+          if (kIsWeb)
+            const SizedBox(
+              width: 40,
+              height: 40,
+              child: CircularProgressIndicator(strokeWidth: 3),
+            )
+          else
+            Lottie.asset(
+              'assets/animations/loading.json',
+              width: size,
+              height: size,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const CircularProgressIndicator(),
+            ),
           if (message != null) ...[
             const SizedBox(height: 14),
             Text(

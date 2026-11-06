@@ -11,6 +11,9 @@ import 'services/auth_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Load .env defensively. If it fails (mobile browsers can occasionally
+  // fail to serve the asset hash on first paint), we continue and show the
+  // configuration error only if the values are actually missing.
   try {
     await dotenv.load(fileName: '.env');
   } catch (e) {
@@ -70,32 +73,38 @@ class _RootRouterState extends State<_RootRouter> {
   @override
   Widget build(BuildContext context) {
     final uri = Uri.base;
+
+    // Mobile browsers sometimes append a trailing slash or keep the hash
+    // inside `fragment` only. Normalize both before inspecting.
     final path = uri.path.toLowerCase();
     final fragment = uri.fragment.toLowerCase();
+    final query = uri.queryParameters;
 
-    final isCustomerRoute = path.contains('/menu') ||
-        fragment.contains('/menu') ||
-        uri.queryParameters.containsKey('table');
+    // Table number can live in ?table=N, or inside #/menu?table=N.
+    int? tableNumber;
 
-    if (isCustomerRoute) {
-      int? tableNumber;
+    final direct = query['table'];
+    if (direct != null) {
+      tableNumber = int.tryParse(direct);
+    }
 
-      final direct = uri.queryParameters['table'];
-      if (direct != null) {
-        tableNumber = int.tryParse(direct);
-      }
-
-      if (tableNumber == null && fragment.contains('?')) {
-        final fragQuery = fragment.split('?').last;
-        for (final pair in fragQuery.split('&')) {
-          final kv = pair.split('=');
-          if (kv.length == 2 && kv[0] == 'table') {
-            tableNumber = int.tryParse(kv[1]);
-            break;
-          }
+    if (tableNumber == null && fragment.contains('?')) {
+      final fragQuery = fragment.split('?').last;
+      for (final pair in fragQuery.split('&')) {
+        final kv = pair.split('=');
+        if (kv.length == 2 && kv[0] == 'table') {
+          tableNumber = int.tryParse(kv[1]);
+          break;
         }
       }
+    }
 
+    final isCustomerRoute = tableNumber != null ||
+        path.contains('/menu') ||
+        fragment.contains('/menu') ||
+        query.containsKey('table');
+
+    if (isCustomerRoute) {
       return CustomerEntryScreen(tableNumber: tableNumber);
     }
 
@@ -132,6 +141,14 @@ class _ConfigErrorApp extends StatelessWidget {
                 Text(
                   'Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env',
                   textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'If you are on a phone, make sure the .env file is bundled '
+                  'in the web build and that the browser is not blocking '
+                  'local storage / third-party cookies.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
             ),

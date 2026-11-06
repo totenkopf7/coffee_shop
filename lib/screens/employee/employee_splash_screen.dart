@@ -1,4 +1,5 @@
-// screens\employee\employee_splash_screen.dart
+// screens/employee/employee_splash_screen.dart
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
@@ -22,12 +23,11 @@ class _EmployeeSplashScreenState extends State<EmployeeSplashScreen> {
   }
 
   Future<void> _afterSplash() async {
-    // Small delay for the branded splash animation.
     await Future.delayed(const Duration(milliseconds: 1400));
     if (!mounted) return;
-
-    // Refresh state in case something changed (e.g. another tab logged out).
-    await AuthService.instance.load();
+    try {
+      await AuthService.instance.load();
+    } catch (_) {}
     if (!mounted) return;
 
     final next = AuthService.instance.isLoggedIn
@@ -63,17 +63,27 @@ class _EmployeeSplashScreenState extends State<EmployeeSplashScreen> {
               style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 40),
-            Lottie.asset(
-              'assets/animations/loading.json',
-              width: 90,
-              height: 90,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const SizedBox(
-                width: 30,
-                height: 30,
-                child: CircularProgressIndicator(color: Colors.white),
+            if (kIsWeb)
+              const SizedBox(
+                width: 42,
+                height: 42,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: Colors.white,
+                ),
+              )
+            else
+              Lottie.asset(
+                'assets/animations/loading.json',
+                width: 90,
+                height: 90,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const SizedBox(
+                  width: 30,
+                  height: 30,
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
               ),
-            ),
           ],
         ),
       ),

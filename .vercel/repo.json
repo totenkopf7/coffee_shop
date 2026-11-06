@@ -1,0 +1,11 @@
+{
+  "remoteName": "origin",
+  "projects": [
+    {
+      "id": "prj_W8RsatsjfGgFkn8bPdVfMTyXKkGW",
+      "name": "coffee_shop",
+      "directory": ".",
+      "orgId": "team_YGLlAZjBJNgPV8DEs3cbEoM3"
+    }
+  ]
+}

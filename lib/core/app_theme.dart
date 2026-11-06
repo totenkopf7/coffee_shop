@@ -1,3 +1,5 @@
+// core/app_theme.dart
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
@@ -36,10 +38,16 @@ class AppTheme {
       ),
       cardTheme: CardTheme(
         color: AppColors.white,
-        elevation: 2,
+        // Shadows inside rounded corners abort the frame on the web
+        // HTML renderer (BlendMode.clear). No shadow on web; a border
+        // gives the same visual separation without saveLayer.
+        elevation: kIsWeb ? 0 : 2,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
+          side: kIsWeb
+              ? const BorderSide(color: AppColors.divider)
+              : BorderSide.none,
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

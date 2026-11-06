@@ -1,3 +1,5 @@
+// widgets/table_card.dart
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
 import '../models/coffee_table.dart';

@@ -1,36 +1,21 @@
+// screens/customer/scan_screen.dart
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/constants.dart';
 
-class ScanScreen extends StatefulWidget {
+// Conditionally imported only on non-web platforms so the mobile_scanner
+// plugin (which uses BarcodeDetector / native cameras) is never even
+// referenced on web.
+import 'scan_screen_mobile.dart' if (dart.library.html) 'scan_screen_stub.dart';
+
+class ScanScreen extends StatelessWidget {
   final void Function(String raw) onScanned;
 
   const ScanScreen({super.key, required this.onScanned});
 
-  @override
-  State<ScanScreen> createState() => _ScanScreenState();
-}
-
-class _ScanScreenState extends State<ScanScreen> {
-  final MobileScannerController _controller = MobileScannerController(
-    detectionSpeed: DetectionSpeed.noDuplicates,
-  );
-  bool _handled = false;
-
-  void _handle(String raw) {
-    if (_handled) return;
-    _handled = true;
-    _controller.stop();
-    widget.onScanned(raw);
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) _handled = false;
-    });
-  }
-
-  Future<void> _manualEntry() async {
+  Future<void> _manualEntry(BuildContext context) async {
     final ctrl = TextEditingController();
     final result = await showDialog<String>(
       context: context,
@@ -57,11 +42,27 @@ class _ScanScreenState extends State<ScanScreen> {
     if (result == null || result.isEmpty) return;
     final n = int.tryParse(result);
     if (n == null) return;
-    _handle('${AppConstants.qrPrefix}$n');
+    onScanned('${AppConstants.qrPrefix}$n');
   }
 
   @override
   Widget build(BuildContext context) {
+    // On web — mobile_scanner uses the BarcodeDetector API which is NOT
+    // supported on iOS Safari or most Android phones. Show the fallback
+    // immediately and never touch the plugin.
+    if (kIsWeb) {
+      return _webFallback(context);
+    }
+
+    // On mobile, delegate to the real scanner (separate file so the
+    // plugin is only referenced on non-web builds).
+    return buildMobileScanner(
+      onScanned: onScanned,
+      onManualEntry: () => _manualEntry(context),
+    );
+  }
+
+  Widget _webFallback(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -69,80 +70,29 @@ class _ScanScreenState extends State<ScanScreen> {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),
-      body: kIsWeb
-          ? _webFallback()
-          : Column(
-              children: [
-                Expanded(
-                  child: MobileScanner(
-                    controller: _controller,
-                    onDetect: (capture) {
-                      for (final b in capture.barcodes) {
-                        final raw = b.rawValue;
-                        if (raw != null && raw.isNotEmpty) {
-                          _handle(raw);
-                          return;
-                        }
-                      }
-                    },
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  color: Colors.black,
-                  child: Column(
-                    children: [
-                      const Text(
-                        'Point your camera at the QR code on your table.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.caramel,
-                        ),
-                        icon: const Icon(Icons.keyboard),
-                        label: const Text('Enter table number manually'),
-                        onPressed: _manualEntry,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
-
-  Widget _webFallback() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.qr_code_2, size: 100, color: Colors.white54),
-            const SizedBox(height: 20),
-            const Text(
-              'QR scanning is available on mobile only.',
-              style: TextStyle(color: Colors.white70),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.keyboard),
-              label: const Text('Enter table number'),
-              onPressed: _manualEntry,
-            ),
-          ],
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.qr_code_2, size: 100, color: Colors.white54),
+              const SizedBox(height: 20),
+              const Text(
+                'QR scanning is available on mobile only.',
+                style: TextStyle(color: Colors.white70),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.keyboard),
+                label: const Text('Enter table number'),
+                onPressed: () => _manualEntry(context),
+              ),
+            ],
+          ),
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 }
