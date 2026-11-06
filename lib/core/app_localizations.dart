@@ -24,7 +24,6 @@ class AppLocalizations {
   static AppLocalizations? of(BuildContext context) =>
       Localizations.of<AppLocalizations>(context, AppLocalizations);
 
-  /// Shorthand. Fails fast in debug if called above MaterialApp.
   static AppLocalizations t(BuildContext context) {
     final l = of(context);
     assert(l != null, 'AppLocalizations not found in context');
@@ -38,7 +37,7 @@ class AppLocalizations {
 
   String get(String key) => _strings[key] ?? _en[key] ?? key;
 
-  // ── Coffee-shop strings (English getters; `ku` returns Badini) ──────
+  // ── Coffee-shop strings ─────────────────────────────────────────────
   String get appTitle => get('appTitle');
   String get appTagline => get('appTagline');
 
@@ -62,15 +61,15 @@ class AppLocalizations {
   String get menuManagement => get('menuManagement');
   String get reports => get('reports');
   String get openTables => get('openTables');
-  String get ofWord => get('ofWord'); // "of" in "3 of 8 open"
-  String get open2 => get('open2'); // "open" state word
-  String get tableN => get('tableN'); // "Table"
+  String get ofWord => get('ofWord');
+  String get open2 => get('open2');
+  String get tableN => get('tableN');
   String get tapToOpen => get('tapToOpen');
   String get waitingDots => get('waitingDots');
   String get newBadge => get('newBadge');
   String get checkBadge => get('checkBadge');
   String get closed => get('closed');
-  String get open3 => get('open3'); // label OPEN
+  String get open3 => get('open3');
   String get ordering => get('ordering');
   String get check => get('check');
   String get requestingCheck => get('requestingCheck');
@@ -82,10 +81,10 @@ class AppLocalizations {
   String get closeTable => get('closeTable');
   String get closeTableConfirm => get('closeTableConfirm');
   String get openTableConfirm => get('openTableConfirm');
-  String get qrTable => get('qrTable'); // "QR — Table"
+  String get qrTable => get('qrTable');
   String get scanQrHint => get('scanQrHint');
   String get done => get('done');
-  String get roundN => get('roundN'); // "ROUND"
+  String get roundN => get('roundN');
   String get total => get('total');
   String get itemSingular => get('itemSingular');
   String get itemPlural => get('itemPlural');
@@ -150,7 +149,6 @@ class AppLocalizations {
   String get tablesUsed => get('tablesUsed');
   String get selectYear => get('selectYear');
   String get selectMonth => get('selectMonth');
-  String get sun => get('sun'); // not used but kept for date pickers
 
   // Customer
   String get ourMenu => get('ourMenu');
@@ -159,7 +157,7 @@ class AppLocalizations {
   String get yourCartIsEmpty => get('yourCartIsEmpty');
   String get cartEmptyAddFirst => get('cartEmptyAddFirst');
   String get placeOrder => get('placeOrder');
-  String get each => get('each'); // "$2.50 each"
+  String get each => get('each');
   String get items => get('items');
   String get itemWord => get('itemWord');
   String get add => get('add');
@@ -211,6 +209,17 @@ class AppLocalizations {
   String get loadLoadingMenu => get('loadLoadingMenu');
   String get loadLoadingReports => get('loadLoadingReports');
   String get loadLoadingOrder => get('loadLoadingOrder');
+
+  // ── Receipt / printing (NEW) ────────────────────────────────────────
+  String get printReceipt => get('printReceipt');
+  String get printerSettings => get('printerSettings');
+  String get printNow => get('printNow');
+  String get changePrinter => get('changePrinter');
+  String get forgetSavedPrinter => get('forgetSavedPrinter');
+  String get sentToPrinter => get('sentToPrinter');
+  String get noPrintersFound => get('noPrintersFound');
+  String get selectPrinter => get('selectPrinter');
+  String get haveGreatDay => get('haveGreatDay');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -220,7 +229,6 @@ const Map<String, String> _en = {
   'appTitle': 'Coffee Shop',
   'appTagline': 'Crafted with care, brewed to order.',
 
-  // Auth
   'staffConsole': 'Staff Console',
   'signInToManage': 'Sign in to manage tables, menu & reports.',
   'username': 'Username',
@@ -235,7 +243,6 @@ const Map<String, String> _en = {
   'invalidCredentials': 'Invalid username or password.',
   'required': 'Required',
 
-  // Dashboard
   'tables': 'Tables',
   'menuManagement': 'Menu Management',
   'reports': 'Reports',
@@ -255,7 +262,6 @@ const Map<String, String> _en = {
   'tableWaitingCheck': '1 table is waiting for the check.',
   'tablesWaitingCheck': 'tables are waiting for the check.',
 
-  // Table detail
   'addItems': 'Add Items',
   'closeTable': 'Close Table',
   'closeTableConfirm': 'Table will be freed and the QR disabled.',
@@ -280,7 +286,6 @@ const Map<String, String> _en = {
   'addToOrder': 'Add to Order',
   'retry': 'Retry',
 
-  // Menu management
   'addProduct': 'Add Product',
   'editProduct': 'Edit Product',
   'deleteProductTitle': 'Delete product?',
@@ -301,7 +306,6 @@ const Map<String, String> _en = {
   'saving': 'Saving…',
   'errorGeneric': 'Something went wrong',
 
-  // Reports (employee)
   'daily': 'Daily',
   'weekly': 'Weekly',
   'monthly': 'Monthly',
@@ -310,7 +314,6 @@ const Map<String, String> _en = {
   'avg': 'Avg',
   'noOrdersInPeriod': 'No orders in this period',
 
-  // Super admin
   'superAdminReports': 'Super Admin Reports',
   'dashboard': 'Dashboard',
   'orders': 'Orders',
@@ -331,9 +334,7 @@ const Map<String, String> _en = {
   'tablesUsed': 'tables used',
   'selectYear': 'Select year',
   'selectMonth': 'Select month',
-  'sun': 'Sun',
 
-  // Customer
   'ourMenu': 'Our Menu',
   'menuTagline': 'Crafted with care, brewed to order.',
   'yourOrder': 'Your Order',
@@ -363,7 +364,6 @@ const Map<String, String> _en = {
   'somethingWentWrong': 'Something went wrong',
   'retryBtn': 'Retry',
 
-  // Scan screen
   'scanQrTitle': 'Scan the QR on your table',
   'pointCameraAtQr': 'Point your camera at the QR code on your table.',
   'enterTableManually': 'Enter table number manually',
@@ -379,7 +379,6 @@ const Map<String, String> _en = {
   'thankYou': 'Thank you!',
   'tableNClosedThankYou': 'has been closed. Have a great day!',
 
-  // Common
   'loading': 'Loading…',
   'refresh': 'Refresh',
   'changePassword': 'Change Password',
@@ -392,13 +391,23 @@ const Map<String, String> _en = {
   'passwordTooShort': 'At least 6 characters',
   'currentPasswordWrong': 'Current password is incorrect.',
 
-  // Loading messages
   'loadWarming': 'Warming up the espresso machine...',
   'loadBrewing': 'Brewing the menu...',
   'loadLoadingTables': 'Loading tables...',
   'loadLoadingMenu': 'Loading menu...',
   'loadLoadingReports': 'Loading reports...',
   'loadLoadingOrder': 'Loading your order...',
+
+  // Receipt / printing
+  'printReceipt': 'Print Receipt',
+  'printerSettings': 'Printer settings',
+  'printNow': 'Print now',
+  'changePrinter': 'Change POS printer',
+  'forgetSavedPrinter': 'Forget saved printer',
+  'sentToPrinter': 'Sent to POS printer.',
+  'noPrintersFound': 'No printers found.',
+  'selectPrinter': 'Select POS printer',
+  'haveGreatDay': 'Have a great day!',
 };
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -408,7 +417,6 @@ const Map<String, String> _ku = {
   'appTitle': 'قەهوەخانە',
   'appTagline': 'ب چاڤڕەغەز و ب دەست هاتیە دروستکرن.',
 
-  // Auth
   'staffConsole': 'پانێلا کارمەندان',
   'signInToManage': 'بچۆ ژوور بۆ ڕێڤەبرنا مێز و مێنووی و ڕاپۆرتان.',
   'username': 'ناڤێ بکارئینەری',
@@ -423,7 +431,6 @@ const Map<String, String> _ku = {
   'invalidCredentials': 'ناڤێ بکارئینەری یان پاسوۆرد خەلەتە.',
   'required': 'پێدڤی یە',
 
-  // Dashboard
   'tables': 'مێز',
   'menuManagement': 'ڕێڤەبرنا مێنووی',
   'reports': 'ڕاپۆرت',
@@ -443,7 +450,6 @@ const Map<String, String> _ku = {
   'tableWaitingCheck': '١ مێز چاڤەڕێیا حیسابی دکەت.',
   'tablesWaitingCheck': 'مێز چاڤەڕێیا حیسابی دکەن.',
 
-  // Table detail
   'addItems': 'زێدەکرنا بەرهەمان',
   'closeTable': 'گرتنا مێزێ',
   'closeTableConfirm': 'مێز دێ ڤالا بیت و QR دێ نەچالاک بیت.',
@@ -468,7 +474,6 @@ const Map<String, String> _ku = {
   'addToOrder': 'زێدەکرن بۆ داخوازیێ',
   'retry': 'دووبارە هەوڵبدە',
 
-  // Menu management
   'addProduct': 'زێدەکرنا بەرهەمی',
   'editProduct': 'دەستکاریکرنا بەرهەمی',
   'deleteProductTitle': 'بەرهەم بهێتە ژێبرن؟',
@@ -489,7 +494,6 @@ const Map<String, String> _ku = {
   'saving': 'دێتە پارێزتن…',
   'errorGeneric': 'خەلەتیەک ڕویدا',
 
-  // Reports (employee)
   'daily': 'ڕۆژانە',
   'weekly': 'هەفتیانە',
   'monthly': 'هەیڤانە',
@@ -498,7 +502,6 @@ const Map<String, String> _ku = {
   'avg': 'ناڤنجی',
   'noOrdersInPeriod': 'چ داخوازی د ڤێ مەودایێ دا نینن',
 
-  // Super admin
   'superAdminReports': 'ڕاپۆرتێن سەرپەرشتیارێ گشتی',
   'dashboard': 'داشبۆرد',
   'orders': 'داخوازی',
@@ -519,9 +522,7 @@ const Map<String, String> _ku = {
   'tablesUsed': 'مێز هاتینە بکارئینان',
   'selectYear': 'سالێ هەلبژێرە',
   'selectMonth': 'هەیڤێ هەلبژێرە',
-  'sun': 'یەکشەم',
 
-  // Customer
   'ourMenu': 'مێنووی مە',
   'menuTagline': 'ب چاڤڕەغەز و ب دەست هاتیە دروستکرن.',
   'yourOrder': 'داخوازیا تە',
@@ -550,7 +551,6 @@ const Map<String, String> _ku = {
   'somethingWentWrong': 'خەلەتیەک ڕویدا',
   'retryBtn': 'دووبارە هەوڵبدە',
 
-  // Scan screen
   'scanQrTitle': 'QR یا سەر مێزێ سکان بکە',
   'pointCameraAtQr': 'کامێرا خوە ئاراستەی QR یا سەر مێزێ بکە.',
   'enterTableManually': 'ژمارا مێزێ ب دەست بنڤیسە',
@@ -565,7 +565,6 @@ const Map<String, String> _ku = {
   'thankYou': 'سپاس!',
   'tableNClosedThankYou': 'هاتە گرتن. ڕۆژەکا خۆش!',
 
-  // Common
   'loading': 'دێتە هەڵگرتن…',
   'refresh': 'نویکرن',
   'changePassword': 'گوهۆڕینا پاسوۆردی',
@@ -578,11 +577,21 @@ const Map<String, String> _ku = {
   'passwordTooShort': 'کێمترین ٦ پیت',
   'currentPasswordWrong': 'پاسوۆردا نها خەلەتە.',
 
-  // Loading messages
   'loadWarming': 'ئامادەکرنا مەکینەیا قەهوەی...',
   'loadBrewing': 'ئامادەکرنا مێنووی...',
   'loadLoadingTables': 'هەڵگرتنا مێزان...',
   'loadLoadingMenu': 'هەڵگرتنا مێنووی...',
   'loadLoadingReports': 'هەڵگرتنا ڕاپۆرتان...',
   'loadLoadingOrder': 'هەڵگرتنا داخوازیا تە...',
+
+  // Receipt / printing
+  'printReceipt': 'چاپکرنا پسولێ',
+  'printerSettings': 'ڕێکخستنێن چاپکەرێ',
+  'printNow': 'نوکە چاپ بکە',
+  'changePrinter': 'گوهۆڕینا چاپکەرێ POS',
+  'forgetSavedPrinter': 'ژێبرنا چاپکەرێ تۆمارکری',
+  'sentToPrinter': 'هاتە هنارتن بۆ چاپکەرێ POS.',
+  'noPrintersFound': 'چ چاپکەر نەهاتنە دیتن.',
+  'selectPrinter': 'چاپکەرێ POS هەلبژێرە',
+  'haveGreatDay': 'ڕۆژەکا خۆش!',
 };
