@@ -1,7 +1,9 @@
-// screens\employee\tables_dashboard.dart
+// screens/employee/tables_dashboard.dart
 import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
+import '../../core/app_localizations.dart';
+import '../../core/locale_provider.dart';
 import '../../models/coffee_table.dart';
 import '../../models/order.dart';
 import '../../models/table_session.dart';
@@ -10,9 +12,9 @@ import '../../services/sound_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/background_widget.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/language_picker.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/table_card.dart';
-import '../customer/scan_screen.dart'; // not used but kept off the customer path
 import 'employee_login_screen.dart';
 import 'menu_management_screen.dart';
 import 'open_table_dialog.dart';
@@ -270,27 +272,26 @@ class _TablesDashboardState extends State<TablesDashboard> {
   }
 
   Future<void> _logout() async {
+    final t = AppLocalizations.t(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
         ),
-        title: const Text('Log out?'),
-        content: const Text(
-          'You will need to sign in again to manage tables.',
-        ),
+        title: Text(t.logOut),
+        content: Text(t.logOutConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(t.cancel),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.danger,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Log out'),
+            child: Text(t.logOut),
           ),
         ],
       ),
@@ -307,7 +308,8 @@ class _TablesDashboardState extends State<TablesDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final openCount = _tables.where((t) => t.isOpen).length;
+    final t = AppLocalizations.t(context);
+    final openCount = _tables.where((x) => x.isOpen).length;
     final checksNeeded = _sessions.where((s) => s.isCheckRequested).length;
 
     return BackgroundWidget(
@@ -321,7 +323,7 @@ class _TablesDashboardState extends State<TablesDashboard> {
             children: [
               Row(
                 children: [
-                  const Text('Coffee Shop'),
+                  Text(t.appTitle),
                   if (checksNeeded > 0) ...[
                     const SizedBox(width: 8),
                     Container(
@@ -344,14 +346,14 @@ class _TablesDashboardState extends State<TablesDashboard> {
                 ],
               ),
               Text(
-                '$openCount of ${_tables.length} open',
+                '$openCount ${t.ofWord} ${_tables.length} ${t.openTables}',
                 style: const TextStyle(fontSize: 12, color: Colors.white70),
               ),
             ],
           ),
           actions: [
             IconButton(
-              tooltip: 'Refresh',
+              tooltip: t.refresh,
               icon: const Icon(Icons.refresh),
               onPressed: () async {
                 await _loadInitial();
@@ -375,13 +377,13 @@ class _TablesDashboardState extends State<TablesDashboard> {
                   ),
                 ),
                 const PopupMenuDivider(),
-                const PopupMenuItem<String>(
+                PopupMenuItem<String>(
                   value: 'logout',
                   child: Row(
                     children: [
-                      Icon(Icons.logout, size: 18),
-                      SizedBox(width: 8),
-                      Text('Log out'),
+                      const Icon(Icons.logout, size: 18),
+                      const SizedBox(width: 8),
+                      Text(t.logOut),
                     ],
                   ),
                 ),
@@ -395,6 +397,7 @@ class _TablesDashboardState extends State<TablesDashboard> {
   }
 
   Widget _buildDrawer(BuildContext context) {
+    final t = AppLocalizations.t(context);
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -407,9 +410,9 @@ class _TablesDashboardState extends State<TablesDashboard> {
               children: [
                 const Text('☕', style: TextStyle(fontSize: 36)),
                 const SizedBox(height: 8),
-                const Text(
-                  'Coffee Shop',
-                  style: TextStyle(
+                Text(
+                  t.appTitle,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -425,12 +428,12 @@ class _TablesDashboardState extends State<TablesDashboard> {
           ),
           ListTile(
             leading: const Icon(Icons.table_restaurant),
-            title: const Text('Tables'),
+            title: Text(t.tables),
             onTap: () => Navigator.pop(context),
           ),
           ListTile(
             leading: const Icon(Icons.restaurant_menu),
-            title: const Text('Menu Management'),
+            title: Text(t.menuManagement),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -443,7 +446,7 @@ class _TablesDashboardState extends State<TablesDashboard> {
           ),
           ListTile(
             leading: const Icon(Icons.bar_chart),
-            title: const Text('Reports'),
+            title: Text(t.reports),
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
@@ -452,12 +455,20 @@ class _TablesDashboardState extends State<TablesDashboard> {
               );
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.language),
+            title: const Text('Language / زمان'),
+            onTap: () {
+              Navigator.pop(context);
+              showLanguagePicker(context, localeProviderInstance);
+            },
+          ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout, color: AppColors.danger),
-            title: const Text(
-              'Log out',
-              style: TextStyle(color: AppColors.danger),
+            title: Text(
+              t.logOut,
+              style: const TextStyle(color: AppColors.danger),
             ),
             onTap: () {
               Navigator.pop(context);
@@ -470,8 +481,9 @@ class _TablesDashboardState extends State<TablesDashboard> {
   }
 
   Widget _buildBody(int checksNeeded) {
+    final t = AppLocalizations.t(context);
     if (_loading) {
-      return const LoadingWidget(message: 'Loading tables...');
+      return LoadingWidget(message: t.loadLoadingTables);
     }
 
     if (_error != null) {
@@ -481,7 +493,7 @@ class _TablesDashboardState extends State<TablesDashboard> {
         subtitle: _error,
         action: ElevatedButton(
           onPressed: _loadInitial,
-          child: const Text('Retry'),
+          child: Text(t.retry),
         ),
       );
     }
@@ -508,8 +520,8 @@ class _TablesDashboardState extends State<TablesDashboard> {
             ),
             itemCount: _tables.length,
             itemBuilder: (_, i) {
-              final t = _tables[i];
-              final session = _sessionForTable(t.tableNumber);
+              final tb = _tables[i];
+              final session = _sessionForTable(tb.tableNumber);
               final orders =
                   session == null ? <Order>[] : _ordersForSession(session.id);
               final total = orders.fold<double>(0, (sum, o) => sum + o.total);
@@ -517,13 +529,13 @@ class _TablesDashboardState extends State<TablesDashboard> {
                   _sessionsWithNewOrders.contains(session.id);
 
               return TableCard(
-                table: t,
-                state: _visualState(t),
+                table: tb,
+                state: _visualState(tb),
                 orderCount: orders.length,
                 runningTotal: total,
                 isCheckRequested: session?.isCheckRequested ?? false,
                 hasNewOrder: hasNewOrder,
-                onTap: () => _onTableTap(t),
+                onTap: () => _onTableTap(tb),
               );
             },
           ),
@@ -533,6 +545,7 @@ class _TablesDashboardState extends State<TablesDashboard> {
   }
 
   Widget _buildAttentionBanner(int count) {
+    final t = AppLocalizations.t(context);
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.fromLTRB(14, 14, 14, 0),
@@ -550,8 +563,8 @@ class _TablesDashboardState extends State<TablesDashboard> {
           Expanded(
             child: Text(
               count == 1
-                  ? '1 table is waiting for the check.'
-                  : '$count tables are waiting for the check.',
+                  ? t.tableWaitingCheck
+                  : '$count ${t.tablesWaitingCheck}',
               style: const TextStyle(
                 color: AppColors.danger,
                 fontWeight: FontWeight.w700,

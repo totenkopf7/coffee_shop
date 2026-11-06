@@ -1,18 +1,14 @@
-// screens/customer/scan_screen.dart
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
 import '../../core/constants.dart';
 
-// Conditionally imported only on non-web platforms so the mobile_scanner
-// plugin (which uses BarcodeDetector / native cameras) is never even
-// referenced on web.
+// Conditional import — dart.library.io exists on mobile, not on web.
 import 'scan_screen_mobile.dart' if (dart.library.html) 'scan_screen_stub.dart';
 
 class ScanScreen extends StatelessWidget {
   final void Function(String raw) onScanned;
-
   const ScanScreen({super.key, required this.onScanned});
 
   Future<void> _manualEntry(BuildContext context) async {
@@ -47,15 +43,7 @@ class ScanScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // On web — mobile_scanner uses the BarcodeDetector API which is NOT
-    // supported on iOS Safari or most Android phones. Show the fallback
-    // immediately and never touch the plugin.
-    if (kIsWeb) {
-      return _webFallback(context);
-    }
-
-    // On mobile, delegate to the real scanner (separate file so the
-    // plugin is only referenced on non-web builds).
+    if (kIsWeb) return _webFallback(context);
     return buildMobileScanner(
       onScanned: onScanned,
       onManualEntry: () => _manualEntry(context),
@@ -79,7 +67,9 @@ class ScanScreen extends StatelessWidget {
               const Icon(Icons.qr_code_2, size: 100, color: Colors.white54),
               const SizedBox(height: 20),
               const Text(
-                'QR scanning is available on mobile only.',
+                'QR scanning is available on mobile only.\n'
+                'On the web, please use the QR link on your table or '
+                'enter the table number below.',
                 style: TextStyle(color: Colors.white70),
                 textAlign: TextAlign.center,
               ),

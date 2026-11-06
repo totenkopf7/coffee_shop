@@ -1,10 +1,9 @@
-// services\supabase_service.dart
+// services/supabase_service.dart
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/constants.dart';
@@ -14,7 +13,6 @@ import '../models/order_item.dart';
 import '../models/order_with_items.dart';
 import '../models/product.dart';
 import '../models/table_session.dart';
-import 'package:flutter/foundation.dart';
 
 class SupabaseService {
   SupabaseService._();
@@ -24,22 +22,16 @@ class SupabaseService {
 
   int _nextChannelId() => DateTime.now().microsecondsSinceEpoch;
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // TABLES
-  // ══════════════════════════════════════════════════════════════════════════
-
+  // ── TABLES ──────────────────────────────────────────────────────────
   Future<List<CoffeeTable>> getTables() async {
     final rows = await _client
         .from('tables')
         .select('id, table_number, is_open')
         .order('table_number', ascending: true);
-    return rows
-        .map<CoffeeTable>((r) => CoffeeTable.fromMap(r))
-        .toList(growable: false);
+    return rows.map<CoffeeTable>((r) => CoffeeTable.fromMap(r)).toList();
   }
 
   Future<CoffeeTable?> getTableByNumber(int tableNumber) async {
-    // Defensive: reject obviously bad input before hitting the network.
     if (tableNumber <= 0 || tableNumber > 100000) return null;
     final row = await _client
         .from('tables')
@@ -61,15 +53,9 @@ class SupabaseService {
     return CoffeeTable.fromMap(row);
   }
 
-  /// Realtime stream of ALL tables.
-  ///
-  /// Explicit channel + initial fetch — immune to the `.stream()` cache
-  /// ordering quirks and works as long as `tables` is in the
-  /// `supabase_realtime` publication.
   Stream<List<CoffeeTable>> watchTables() {
     late StreamController<List<CoffeeTable>> controller;
     RealtimeChannel? channel;
-
     Future<void> emit() async {
       try {
         final rows = await getTables();
@@ -98,14 +84,10 @@ class SupabaseService {
         await controller.close();
       },
     );
-
     return controller.stream;
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // SESSIONS
-  // ══════════════════════════════════════════════════════════════════════════
-
+  // ── SESSIONS ────────────────────────────────────────────────────────
   Future<TableSession?> getActiveSessionForTable(int tableNumber) async {
     if (tableNumber <= 0) return null;
     final row = await _client
@@ -136,16 +118,12 @@ class SupabaseService {
         .from('table_sessions')
         .select()
         .order('opened_at', ascending: false);
-    return rows
-        .map<TableSession>((r) => TableSession.fromMap(r))
-        .toList(growable: false);
+    return rows.map<TableSession>((r) => TableSession.fromMap(r)).toList();
   }
 
-  /// Realtime stream of ALL sessions (explicit channel + initial fetch).
   Stream<List<TableSession>> watchAllSessions() {
     late StreamController<List<TableSession>> controller;
     RealtimeChannel? channel;
-
     Future<void> emit() async {
       try {
         final rows = await getAllSessions();
@@ -174,24 +152,16 @@ class SupabaseService {
         await controller.close();
       },
     );
-
     return controller.stream;
   }
 
-  Stream<List<TableSession>> watchActiveSessions() {
-    return watchAllSessions().map(
-      (sessions) => sessions.where((s) => !s.isClosed).toList(growable: false),
-    );
-  }
+  Stream<List<TableSession>> watchActiveSessions() =>
+      watchAllSessions().map((s) => s.where((x) => !x.isClosed).toList());
 
-  /// Stream of a single session (customer status screen).
   Stream<TableSession?> watchSession(String sessionId) {
-    if (sessionId.trim().isEmpty) {
-      return Stream<TableSession?>.value(null);
-    }
+    if (sessionId.trim().isEmpty) return Stream.value(null);
     late StreamController<TableSession?> controller;
     RealtimeChannel? channel;
-
     Future<void> emit() async {
       try {
         final s = await getSessionById(sessionId);
@@ -225,15 +195,12 @@ class SupabaseService {
         await controller.close();
       },
     );
-
     return controller.stream;
   }
 
   Future<TableSession> openTable(int tableNumber) async {
     final table = await getTableByNumber(tableNumber);
-    if (table == null) {
-      throw Exception('Table $tableNumber does not exist');
-    }
+    if (table == null) throw Exception('Table $tableNumber does not exist');
 
     final existing = await getActiveSessionForTable(tableNumber);
     if (existing != null) {
@@ -265,21 +232,13 @@ class SupabaseService {
   }
 
   Future<void> requestCheck(String sessionId) async {
-    if (sessionId.trim().isEmpty) {
-      throw Exception('Invalid session id');
-    }
-    await _client.rpc(
-      'request_check',
-      params: {'p_session_id': sessionId},
-    );
+    if (sessionId.trim().isEmpty) throw Exception('Invalid session id');
+    await _client.rpc('request_check', params: {'p_session_id': sessionId});
   }
 
   Future<void> closeTable(String sessionId) async {
     final session = await getSessionById(sessionId);
-    if (session == null) {
-      throw Exception('Session not found');
-    }
-
+    if (session == null) throw Exception('Session not found');
     final nowUtc = DateTime.now().toUtc().toIso8601String();
 
     await _client
@@ -299,10 +258,7 @@ class SupabaseService {
     }).eq('id', session.tableId);
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // PRODUCTS / MENU
-  // ══════════════════════════════════════════════════════════════════════════
-
+  // ── PRODUCTS ────────────────────────────────────────────────────────
   Future<List<Product>> getAvailableProducts() async {
     final rows = await _client
         .from('products')
@@ -365,10 +321,7 @@ class SupabaseService {
     await _client.from('products').delete().eq('id', id);
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // ORDERS / ROUNDS
-  // ══════════════════════════════════════════════════════════════════════════
-
+  // ── ORDERS ──────────────────────────────────────────────────────────
   Future<List<OrderWithItems>> getOrdersForSession(String sessionId) async {
     if (sessionId.trim().isEmpty) return const [];
     final orderRows = await _client
@@ -390,18 +343,14 @@ class SupabaseService {
       final items = await _getItemsForOrder(order.id);
       result.add(OrderWithItems(order: order, items: items));
     }
-
     result.sort((a, b) => a.order.roundNumber.compareTo(b.order.roundNumber));
     return result;
   }
 
   Stream<List<OrderWithItems>> watchOrdersForSession(String sessionId) {
-    if (sessionId.trim().isEmpty) {
-      return Stream<List<OrderWithItems>>.value(const []);
-    }
+    if (sessionId.trim().isEmpty) return Stream.value(const []);
     late StreamController<List<OrderWithItems>> controller;
     RealtimeChannel? channel;
-
     Future<void> emit() async {
       try {
         final list = await getOrdersForSession(sessionId);
@@ -441,7 +390,6 @@ class SupabaseService {
         await controller.close();
       },
     );
-
     return controller.stream;
   }
 
@@ -450,13 +398,12 @@ class SupabaseService {
         .from('orders')
         .select()
         .order('created_at', ascending: false);
-    return rows.map<Order>((r) => Order.fromMap(r)).toList(growable: false);
+    return rows.map<Order>((r) => Order.fromMap(r)).toList();
   }
 
   Stream<List<Order>> watchAllOrders() {
     late StreamController<List<Order>> controller;
     RealtimeChannel? channel;
-
     Future<void> emit() async {
       try {
         final list = await getAllOrders();
@@ -485,12 +432,13 @@ class SupabaseService {
         await controller.close();
       },
     );
-
     return controller.stream;
   }
 
   Future<List<OrderItem>> _getItemsForOrder(String orderId) async {
     if (orderId.trim().isEmpty) return const [];
+    // Join products so we can display the product name (there is no
+    // name_snapshot column in this schema).
     final rows = await _client
         .from('order_items')
         .select('*, products(*)')
@@ -518,7 +466,6 @@ class SupabaseService {
     if (tableId <= 0) throw Exception('Invalid table');
     if (items.isEmpty) throw Exception('Cannot place an empty order');
 
-    // Validate items before we touch the DB.
     for (final i in items) {
       final pid = i['productId'];
       final qty = i['quantity'];
@@ -558,6 +505,7 @@ class SupabaseService {
 
     final orderId = orderRow['id'] as String;
 
+    // NOTE: schema has no `name_snapshot` column — do NOT write it.
     final itemRows = items
         .map((i) => {
               'order_id': orderId,
@@ -579,42 +527,29 @@ class SupabaseService {
   }) =>
       placeOrder(sessionId: sessionId, tableId: tableId, items: items);
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // IMAGE UPLOAD
-  // ══════════════════════════════════════════════════════════════════════════
-
+  // ── IMAGE UPLOAD (web-safe — no dart:io) ───────────────────────────
   Future<String?> uploadProductImage({
-    required String filePath,
+    required XFile file,
     required String productName,
   }) async {
-    if (filePath.trim().isEmpty) return null;
     try {
       final safeName = productName
           .toLowerCase()
           .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
           .replaceAll(RegExp(r'^_+|_+$'), '');
-      final ext = filePath.contains('.') ? filePath.split('.').last : 'png';
+      final ext = file.name.contains('.')
+          ? file.name.split('.').last.toLowerCase()
+          : 'png';
       final fileName = '${safeName.isEmpty ? 'product' : safeName}_'
           '${DateTime.now().millisecondsSinceEpoch}.$ext';
 
-      if (kIsWeb) {
-        final res = await http.get(Uri.parse(filePath));
-        if (res.statusCode != 200) {
-          throw Exception('Failed to fetch image: ${res.statusCode}');
-        }
-        await _client.storage.from('product-images').uploadBinary(
-              fileName,
-              res.bodyBytes,
-              fileOptions: const FileOptions(cacheControl: '3600'),
-            );
-      } else {
-        final bytes = await File(filePath).readAsBytes();
-        await _client.storage.from('product-images').uploadBinary(
-              fileName,
-              Uint8List.fromList(bytes),
-              fileOptions: const FileOptions(cacheControl: '3600'),
-            );
-      }
+      final Uint8List bytes = await file.readAsBytes();
+
+      await _client.storage.from('product-images').uploadBinary(
+            fileName,
+            bytes,
+            fileOptions: const FileOptions(cacheControl: '3600'),
+          );
 
       return _client.storage.from('product-images').getPublicUrl(fileName);
     } catch (e) {
@@ -623,10 +558,7 @@ class SupabaseService {
     }
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // REPORTS
-  // ══════════════════════════════════════════════════════════════════════════
-
+  // ── REPORTS ────────────────────────────────────────────────────────
   Future<List<OrderWithItems>> getOrdersInRange({
     required DateTime from,
     required DateTime to,

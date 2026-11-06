@@ -11,7 +11,6 @@ import '../../widgets/loading_widget.dart';
 
 class MenuManagementScreen extends StatefulWidget {
   const MenuManagementScreen({super.key});
-
   @override
   State<MenuManagementScreen> createState() => _MenuManagementScreenState();
 }
@@ -52,9 +51,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
   Future<void> _edit([Product? product]) async {
     final saved = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => AddEditProductScreen(product: product),
-      ),
+      MaterialPageRoute(builder: (_) => AddEditProductScreen(product: product)),
     );
     if (saved == true) _load();
   }
@@ -82,9 +79,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.danger,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete'),
           ),
@@ -114,10 +109,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
               onPressed: () => _edit(),
               tooltip: 'Add product',
             ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _load,
-            ),
+            IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
           ],
         ),
         body: _buildBody(),
@@ -126,22 +118,15 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
   }
 
   Widget _buildBody() {
-    if (_loading) {
-      return const LoadingWidget(message: 'Loading menu...');
-    }
-
+    if (_loading) return const LoadingWidget(message: 'Loading menu...');
     if (_error != null) {
       return EmptyState(
         icon: Icons.error_outline,
         title: 'Could not load menu',
         subtitle: _error,
-        action: ElevatedButton(
-          onPressed: _load,
-          child: const Text('Retry'),
-        ),
+        action: ElevatedButton(onPressed: _load, child: const Text('Retry')),
       );
     }
-
     if (_products.isEmpty) {
       return const EmptyState(
         icon: Icons.restaurant_menu,
@@ -160,11 +145,7 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
           child: ListTile(
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: SizedBox(
-                width: 54,
-                height: 54,
-                child: _thumb(p),
-              ),
+              child: SizedBox(width: 54, height: 54, child: _thumb(p)),
             ),
             title: Text(
               p.name,
@@ -229,7 +210,6 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
 class AddEditProductScreen extends StatefulWidget {
   final Product? product;
   const AddEditProductScreen({super.key, this.product});
-
   @override
   State<AddEditProductScreen> createState() => _AddEditProductScreenState();
 }
@@ -280,7 +260,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
       if (_picked != null) {
         final uploaded = await SupabaseService.instance.uploadProductImage(
-          filePath: _picked!.path,
+          file: _picked!,
           productName: _name.text.trim(),
         );
         if (uploaded != null) imageUrl = uploaded;
@@ -319,9 +299,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
     return Scaffold(
       backgroundColor: AppColors.cream,
       appBar: AppBar(
-        title: Text(
-          widget.product == null ? 'Add Product' : 'Edit Product',
-        ),
+        title: Text(widget.product == null ? 'Add Product' : 'Edit Product'),
       ),
       body: _saving
           ? const LoadingWidget(message: 'Saving...')
@@ -414,9 +392,6 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
 
   Widget _previewBox() {
     if (_picked != null) {
-      // On web, the XFile path is a blob URL that Image.network can render.
-      // On mobile, we can't easily render file paths without extra plumbing
-      // — so we fall back to a "picked" placeholder.
       if (kIsWeb) {
         return ClipRRect(
           borderRadius: BorderRadius.circular(15),
@@ -456,10 +431,7 @@ class _AddEditProductScreenState extends State<AddEditProductScreen> {
       children: [
         Icon(icon, size: 40, color: color),
         const SizedBox(height: 6),
-        Text(
-          text,
-          style: TextStyle(fontSize: 12, color: color),
-        ),
+        Text(text, style: TextStyle(fontSize: 12, color: color)),
       ],
     );
   }

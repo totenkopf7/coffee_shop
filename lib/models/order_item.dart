@@ -1,15 +1,13 @@
+// models/order_item.dart
 import 'product.dart';
 
-/// A single line item inside an order.
 class OrderItem {
-  final String id; // uuid
-  final String orderId; // uuid
-  final int productId; // int
+  final String id;
+  final String orderId;
+  final int productId;
   final int quantity;
-  final double unitPrice; // snapshot at time of order
-  final String nameSnapshot; // snapshot of product name at order time
-
-  /// Optional joined product object (present when we join products(*)).
+  final double unitPrice;
+  final String nameSnapshot;
   final Product? product;
 
   const OrderItem({
@@ -24,15 +22,16 @@ class OrderItem {
 
   factory OrderItem.fromMap(Map<String, dynamic> map) {
     Product? joined;
-    if (map['products'] is Map<String, dynamic>) {
-      joined = Product.fromMap(map['products'] as Map<String, dynamic>);
+    final raw = map['products'];
+    if (raw is Map) {
+      joined = Product.fromMap(Map<String, dynamic>.from(raw));
     }
     return OrderItem(
       id: map['id'] as String,
-      orderId: map['order_id'] as String,
-      productId: (map['product_id'] as num).toInt(),
-      quantity: (map['quantity'] as num).toInt(),
-      unitPrice: (map['unit_price'] as num).toDouble(),
+      orderId: (map['order_id'] as String?) ?? '',
+      productId: (map['product_id'] as num?)?.toInt() ?? 0,
+      quantity: (map['quantity'] as num?)?.toInt() ?? 0,
+      unitPrice: (map['unit_price'] as num?)?.toDouble() ?? 0.0,
       nameSnapshot: (map['name_snapshot'] as String?) ??
           joined?.name ??
           'Product ${map['product_id']}',

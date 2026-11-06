@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
+import '../../core/constants.dart';
 import '../../models/coffee_table.dart';
 import '../../models/table_session.dart';
 import '../../services/supabase_service.dart';
@@ -9,13 +10,8 @@ import '../../widgets/loading_widget.dart';
 import 'scan_screen.dart';
 import 'customer_menu_screen.dart';
 
-/// Entry point for customer mode.
-///
-/// - If [tableNumber] is provided (web deep link or from Scan), we validate it.
-/// - Otherwise we show the Scan QR screen.
 class CustomerEntryScreen extends StatefulWidget {
   final int? tableNumber;
-
   const CustomerEntryScreen({super.key, this.tableNumber});
 
   @override
@@ -74,16 +70,40 @@ class _CustomerEntryScreenState extends State<CustomerEntryScreen> {
     }
   }
 
-  void _onScanned(String raw) {
-    // QR content format: "COFFEE_TABLE:2"
-    final parts = raw.split(':');
-    if (parts.length != 2) {
-      _showSnack('Invalid QR code.');
-      return;
+  /// Accepts either "COFFEE_TABLE:2" or a URL containing "table=2".
+  int? _parseTableNumber(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.startsWith(AppConstants.qrPrefix)) {
+      return int.tryParse(trimmed.substring(AppConstants.qrPrefix.length));
     }
-    final n = int.tryParse(parts[1]);
+    // Try URL parse
+    try {
+      final uri = Uri.tryParse(trimmed);
+      if (uri != null) {
+        final q = uri.queryParameters['table'];
+        if (q != null) return int.tryParse(q);
+        // Fragment may contain ?table=N
+        if (uri.fragment.contains('?')) {
+          final fragQ = uri.fragment.split('?').last;
+          for (final pair in fragQ.split('&')) {
+            final kv = pair.split('=');
+            if (kv.length == 2 && kv[0] == 'table') {
+              return int.tryParse(kv[1]);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+    // Fallback: last integer in string
+    final match = RegExp(r'\d+').allMatches(trimmed);
+    if (match.isNotEmpty) return int.tryParse(match.last.group(0)!);
+    return null;
+  }
+
+  void _onScanned(String raw) {
+    final n = _parseTableNumber(raw);
     if (n == null) {
-      _showSnack('Invalid table number.');
+      _showSnack('Invalid QR code.');
       return;
     }
     _validate(n);
@@ -96,11 +116,8 @@ class _CustomerEntryScreenState extends State<CustomerEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // No table yet → show the scanner.
     if (widget.tableNumber == null && _table == null && !_loading) {
-      return ScanScreen(
-        onScanned: _onScanned,
-      );
+      return ScanScreen(onScanned: _onScanned);
     }
 
     if (_loading) {
@@ -136,17 +153,12 @@ class _CustomerEntryScreenState extends State<CustomerEntryScreen> {
       );
     }
 
-    // Table exists but is closed → friendly "ask staff" message.
     if (_table != null && (_session == null || _session!.isClosed)) {
       return _TableClosedView(tableNumber: _table!.tableNumber);
     }
 
-    // Table is open → menu.
     if (_table != null && _session != null) {
-      return CustomerMenuScreen(
-        table: _table!,
-        session: _session!,
-      );
+      return CustomerMenuScreen(table: _table!, session: _session!);
     }
 
     return const Scaffold(

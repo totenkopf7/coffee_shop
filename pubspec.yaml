@@ -9,24 +9,22 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  
+
   supabase_flutter: ^2.5.0
-  flutter_dotenv: ^5.1.0
-  provider: ^6.0.5
   qr_flutter: ^4.1.0
-  uuid: ^3.0.7
   intl: ^0.18.1
   lottie: ^2.7.0
   image_picker: ^1.0.4
   shared_preferences: ^2.2.2
   http: ^1.1.0
-  
-  # PDF Generation
   pdf: ^3.10.4
   printing: ^5.11.1
   audioplayers: ^5.2.1
   google_fonts: 6.1.0
   mobile_scanner: ^4.0.1
+
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:
@@ -35,11 +33,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
   assets:
-    - .env
     - assets/images/background.png
     - assets/images/table.png
     - assets/animations/loading.json
-    - assets/fonts/OpenSans-Regular.ttf
+    - assets/sounds/new_order.mp3
     - assets/sounds/new_order.mp3

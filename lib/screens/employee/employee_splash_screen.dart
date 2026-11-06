@@ -4,13 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
 import '../../core/app_colors.dart';
+import '../../core/app_localizations.dart';
 import '../../services/auth_service.dart';
+import '../super_admin/super_admin_reports_screen.dart';
 import 'employee_login_screen.dart';
 import 'tables_dashboard.dart';
 
 class EmployeeSplashScreen extends StatefulWidget {
   const EmployeeSplashScreen({super.key});
-
   @override
   State<EmployeeSplashScreen> createState() => _EmployeeSplashScreenState();
 }
@@ -30,9 +31,14 @@ class _EmployeeSplashScreenState extends State<EmployeeSplashScreen> {
     } catch (_) {}
     if (!mounted) return;
 
-    final next = AuthService.instance.isLoggedIn
-        ? const TablesDashboard()
-        : const EmployeeLoginScreen();
+    Widget next;
+    if (!AuthService.instance.isLoggedIn) {
+      next = const EmployeeLoginScreen();
+    } else if (AuthService.instance.isSuperAdmin) {
+      next = const SuperAdminReportsScreen();
+    } else {
+      next = const TablesDashboard();
+    }
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => next),
@@ -41,6 +47,7 @@ class _EmployeeSplashScreenState extends State<EmployeeSplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.t(context);
     return Scaffold(
       backgroundColor: AppColors.espresso,
       body: Center(
@@ -49,18 +56,18 @@ class _EmployeeSplashScreenState extends State<EmployeeSplashScreen> {
           children: [
             const Text('☕', style: TextStyle(fontSize: 76)),
             const SizedBox(height: 12),
-            const Text(
-              'Coffee Shop',
-              style: TextStyle(
+            Text(
+              t.appTitle,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 30,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Staff Console',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+            Text(
+              t.staffConsole,
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 40),
             if (kIsWeb)
