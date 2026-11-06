@@ -1,4 +1,5 @@
 // lib/main.dart
+import 'package:coffee_shop/services/sound_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -26,6 +27,8 @@ Future<void> main() async {
   );
 
   await AuthService.instance.load();
+
+  await SoundService.instance.init();
 
   runApp(CoffeeShopApp(localeProvider: localeProviderInstance));
 }

@@ -162,6 +162,7 @@ class _TablesDashboardState extends State<TablesDashboard> {
         continue;
       }
 
+      // Look up the session BEFORE using it. If we can't find one, skip.
       final session = _sessionById(o.sessionId!);
       if (session == null) continue;
 
@@ -513,10 +514,10 @@ class _TablesDashboardState extends State<TablesDashboard> {
           child: GridView.builder(
             padding: const EdgeInsets.all(14),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.78,
+              crossAxisCount: 4,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1.5,
             ),
             itemCount: _tables.length,
             itemBuilder: (_, i) {

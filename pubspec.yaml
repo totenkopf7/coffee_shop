@@ -38,4 +38,4 @@ flutter:
     - assets/images/table.png
     - assets/animations/loading.json
     - assets/sounds/new_order.mp3
-    - assets/sounds/new_order.mp3
+    - assets/sounds/check.mp3
