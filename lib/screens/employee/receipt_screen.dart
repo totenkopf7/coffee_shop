@@ -1,6 +1,7 @@
 // screens/employee/receipt_screen.dart
 import 'dart:typed_data';
 
+import 'package:coffee_shop/core/config.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -103,7 +104,7 @@ class ReceiptScreen extends StatelessWidget {
                               ),
                             ),
                             pw.Text(
-                              '\$${it.totalPrice.toStringAsFixed(2)}',
+                              AppConfig.moneyPlain(it.totalPrice),
                               style: const pw.TextStyle(fontSize: 8),
                             ),
                           ],
@@ -126,7 +127,7 @@ class ReceiptScreen extends StatelessWidget {
                     ),
                   ),
                   pw.Text(
-                    '\$${_total.toStringAsFixed(2)}',
+                    AppConfig.moneyPlain(_total),
                     style: pw.TextStyle(
                       fontSize: 12,
                       fontWeight: pw.FontWeight.bold,
@@ -408,7 +409,7 @@ class ReceiptScreen extends StatelessWidget {
                                 ),
                                 Expanded(child: Text(it.displayName)),
                                 Text(
-                                  '\$${it.totalPrice.toStringAsFixed(2)}',
+                                  AppConfig.moneyPlain(_total),
                                   style: const TextStyle(
                                       fontWeight: FontWeight.w600),
                                 ),
@@ -429,7 +430,7 @@ class ReceiptScreen extends StatelessWidget {
                           letterSpacing: 1,
                         )),
                     Text(
-                      '\$${_total.toStringAsFixed(2)}',
+                      AppConfig.money(_total),
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w800,

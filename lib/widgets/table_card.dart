@@ -1,4 +1,5 @@
 // widgets/table_card.dart
+import 'package:coffee_shop/core/config.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../core/app_colors.dart';
@@ -165,7 +166,7 @@ class TableCard extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '\$${runningTotal.toStringAsFixed(2)}',
+                          AppConfig.money(runningTotal),
                           style: TextStyle(
                             color: _accent,
                             fontSize: 12,

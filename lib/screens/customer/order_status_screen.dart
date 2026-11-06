@@ -1,4 +1,5 @@
 // screens\customer\order_status_screen.dart
+import 'package:coffee_shop/core/config.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
@@ -312,7 +313,7 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
                   ),
                 ),
                 Text(
-                  '\$${_total.toStringAsFixed(2)}',
+                  AppConfig.money(_total),
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
@@ -474,7 +475,7 @@ class _RoundBlock extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '\$${it.totalPrice.toStringAsFixed(2)}',
+                    AppConfig.money(it.totalPrice),
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       color: AppColors.espresso,
@@ -496,7 +497,7 @@ class _RoundBlock extends StatelessWidget {
                 ),
               ),
               Text(
-                '\$${round.subtotal.toStringAsFixed(2)}',
+                AppConfig.money(round.subtotal),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,

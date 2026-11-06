@@ -1,4 +1,5 @@
 // screens/super_admin/super_admin_reports_screen.dart
+import 'package:coffee_shop/core/config.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -346,8 +347,8 @@ class _SuperAdminReportsScreenState extends State<SuperAdminReportsScreen> {
         final twoCols = c.maxWidth < 620;
         final cards = [
           _Stat(
-            label: 'Revenue',
-            value: '\$${_revenue.toStringAsFixed(2)}',
+            label: 'Revenue (IQD)',
+            value: AppConfig.money(_revenue),
             icon: Icons.attach_money,
             color: AppColors.success,
           ),
@@ -364,8 +365,8 @@ class _SuperAdminReportsScreenState extends State<SuperAdminReportsScreen> {
             color: AppColors.coffee,
           ),
           _Stat(
-            label: 'Avg Order',
-            value: '\$${_avgOrder.toStringAsFixed(2)}',
+            label: 'Avg Order (IQD)',
+            value: AppConfig.money(_avgOrder),
             icon: Icons.trending_up,
             color: AppColors.info,
           ),
@@ -461,7 +462,7 @@ class _SuperAdminReportsScreenState extends State<SuperAdminReportsScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Revenue \$${topRevenue.toStringAsFixed(2)}',
+                  'Revenue ${AppConfig.money(topRevenue)}',
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -531,7 +532,9 @@ class _SuperAdminReportsScreenState extends State<SuperAdminReportsScreen> {
     final maxVal = entries.fold<double>(1, (m, e) => e.value > m ? e.value : m);
 
     return _card(
-      title: _period == 'monthly' ? 'Revenue per day' : 'Revenue per hour',
+      title: _period == 'monthly'
+          ? 'Revenue per day (IQD)'
+          : 'Revenue per hour (IQD)',
       child: entries.isEmpty
           ? const Text(
               'No data for this period.',
@@ -581,7 +584,8 @@ class _SuperAdminReportsScreenState extends State<SuperAdminReportsScreen> {
                       SizedBox(
                         width: 64,
                         child: Text(
-                          '\$${e.value.toStringAsFixed(0)}',
+                          e.value.toStringAsFixed(
+                              0), // plain number for chart axis
                           textAlign: TextAlign.right,
                           style: const TextStyle(
                             fontSize: 11,

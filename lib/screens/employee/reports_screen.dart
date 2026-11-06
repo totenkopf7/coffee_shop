@@ -1,3 +1,4 @@
+import 'package:coffee_shop/core/config.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -57,8 +58,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       );
 
       final closed = list.where((o) => o.order.isClosed).toList();
-      final revenue =
-          closed.fold<double>(0, (s, o) => s + o.order.total);
+      final revenue = closed.fold<double>(0, (s, o) => s + o.order.total);
 
       if (!mounted) return;
       setState(() {
@@ -136,7 +136,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 style: const TextStyle(fontSize: 12),
                               ),
                               trailing: Text(
-                                '\$${r.order.total.toStringAsFixed(2)}',
+                                AppConfig.money(r.order.total),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
@@ -178,8 +178,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
       child: Row(
         children: [
           Expanded(
-            child: _stat('Revenue', '\$${_revenue.toStringAsFixed(2)}',
-                AppColors.success),
+            child:
+                _stat('Revenue', AppConfig.money(_revenue), AppColors.success),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -189,7 +189,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Expanded(
             child: _stat(
               'Avg',
-              '\$${_closedCount == 0 ? '0.00' : (_revenue / _closedCount).toStringAsFixed(2)}',
+              AppConfig.money(
+                  _closedCount == 0 ? 0 : (_revenue / _closedCount)),
               AppColors.caramel,
             ),
           ),

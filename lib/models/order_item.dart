@@ -1,4 +1,5 @@
 // models/order_item.dart
+import '../core/config.dart';
 import 'product.dart';
 
 class OrderItem {
@@ -41,8 +42,8 @@ class OrderItem {
 
   double get totalPrice => unitPrice * quantity;
   String get displayName => product?.name ?? nameSnapshot;
-  String get formattedPrice => '\$${unitPrice.toStringAsFixed(2)}';
-  String get formattedTotal => '\$${totalPrice.toStringAsFixed(2)}';
+  String get formattedPrice => AppConfig.money(unitPrice);
+  String get formattedTotal => AppConfig.money(totalPrice);
 
   @override
   String toString() => 'OrderItem($displayName x$quantity)';

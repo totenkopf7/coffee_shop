@@ -55,7 +55,7 @@ class CoffeeShopApp extends StatelessWidget {
           GlobalCupertinoLocalizations.delegate,
         ],
         builder: (context, child) {
-          final isKu = Localizations.localeOf(context).languageCode == 'en';
+          final isKu = Localizations.localeOf(context).languageCode == 'ku';
           return Directionality(
             textDirection: isKu ? TextDirection.rtl : TextDirection.ltr,
             child: child ?? const SizedBox.shrink(),

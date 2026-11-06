@@ -1,3 +1,4 @@
+import 'package:coffee_shop/core/config.dart';
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 
@@ -77,7 +78,7 @@ Future<bool> showCloseTableDialog(
                     style: const TextStyle(fontSize: 13)),
                 const SizedBox(height: 4),
                 Text(
-                  'Total: \$${total.toStringAsFixed(2)}',
+                  'Total: ${AppConfig.money(total)}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

@@ -1,4 +1,6 @@
-/// A menu item.
+// models/product.dart
+import '../core/config.dart';
+
 class Product {
   final int id;
   final String name;
@@ -39,7 +41,8 @@ class Product {
         'is_available': isAvailable,
       };
 
-  String get formattedPrice => '\$${price.toStringAsFixed(2)}';
+  /// e.g. "3,500 IQD"
+  String get formattedPrice => AppConfig.money(price);
 
   @override
   String toString() => 'Product(#$id, $name, $price)';

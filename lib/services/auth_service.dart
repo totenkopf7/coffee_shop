@@ -18,6 +18,7 @@ class AuthService {
   bool _cachedIsSuperAdmin = false;
   String? _cachedUsername;
   String? _cachedDisplayName;
+  String? get currentUsername => _cachedUsername;
 
   bool get isLoggedIn => _cached;
   bool get isSuperAdmin => _cachedIsSuperAdmin;

@@ -3,13 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persists the chosen language. Defaults to Kurdish (Badini) on first run.
-///
 /// Uses an InheritedNotifier-free approach: the app passes this instance
 /// directly to [CoffeeShopApp], which rebuilds MaterialApp on change.
 class LocaleProvider extends ChangeNotifier {
   static const _kLangKey = 'app_language_code';
 
-  Locale _locale = const Locale('ku');
+  Locale _locale = const Locale('en');
   Locale get locale => _locale;
 
   LocaleProvider() {

@@ -64,6 +64,10 @@ class AppLocalizations {
   String get ofWord => get('ofWord');
   String get open2 => get('open2');
   String get tableN => get('tableN');
+  String get viewCart => get('viewCart');
+  String get menuIsEmpty => get('menuIsEmpty');
+  String get menuIsEmptyHint => get('menuIsEmptyHint');
+  String get perItemSuffix => get('perItemSuffix');
   String get tapToOpen => get('tapToOpen');
   String get waitingDots => get('waitingDots');
   String get newBadge => get('newBadge');
@@ -234,6 +238,10 @@ const Map<String, String> _en = {
   'username': 'Username',
   'password': 'Password',
   'signIn': 'Sign In',
+  'viewCart': 'View Cart',
+  'menuIsEmpty': 'Menu is empty',
+  'menuIsEmptyHint': "The shop hasn't added items yet.",
+  'perItemSuffix': 'each',
   'signOut': 'Sign out',
   'logOut': 'Log out',
   'logOutConfirm': 'You will need to sign in again to manage tables.',
@@ -531,6 +539,10 @@ const Map<String, String> _ku = {
   'placeOrder': 'داخوازیێ بکە',
   'each': 'هەر یەک',
   'items': 'بەرهەم',
+  'viewCart': 'سەبەتێ ببینە',
+  'menuIsEmpty': 'مێنوو ڤالایە',
+  'menuIsEmptyHint': 'دوکانێ هێشتا چ بەرهەم نەدانینە.',
+  'perItemSuffix': 'هەر یەک',
   'itemWord': 'بەرهەم',
   'add': 'زێدەکرن',
   'all': 'هەمی',

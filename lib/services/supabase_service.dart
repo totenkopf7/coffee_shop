@@ -304,12 +304,56 @@ class SupabaseService {
 
   Future<bool> productHasOrders(int id) async {
     if (id <= 0) return false;
-    final rows = await _client
-        .from('order_items')
-        .select('id')
-        .eq('product_id', id)
-        .limit(1);
-    return rows.isNotEmpty;
+    try {
+      final rows = await _client
+          .from('order_items')
+          .select('id')
+          .eq('product_id', id)
+          .limit(1);
+      return rows.isNotEmpty;
+    } catch (e) {
+      debugPrint('productHasOrders error (ignored): $e');
+      return false;
+    }
+  }
+
+  /// Secure delete — requires the currently logged-in admin's password.
+  ///
+  /// The password is verified in Postgres (via `delete_product_secure`) and
+  /// the actual DELETE runs there too. Even if someone bypasses the Flutter
+  /// app, they cannot delete a product without valid admin credentials.
+  ///
+  /// Throws a human-readable `Exception` on any failure.
+  Future<void> deleteProductSecure({
+    required String username,
+    required String password,
+    required int productId,
+  }) async {
+    if (productId <= 0) throw Exception('Invalid product id.');
+    if (username.trim().isEmpty) throw Exception('Username is required.');
+    if (password.isEmpty) throw Exception('Password is required.');
+
+    try {
+      final result = await _client.rpc(
+        'delete_product_secure',
+        params: {
+          'p_username': username.trim(),
+          'p_password': password,
+          'p_product_id': productId,
+        },
+      );
+
+      // RPC returns `true` on success. Anything else means it silently failed.
+      if (result != true) {
+        throw Exception('Delete did not complete.');
+      }
+    } on PostgrestException catch (e) {
+      // Postgres RAISE EXCEPTION comes through as `message` — surface it.
+      throw Exception(e.message);
+    } catch (e) {
+      // Re-throw anything else as-is (network errors, etc).
+      throw Exception(e.toString().replaceFirst('Exception: ', ''));
+    }
   }
 
   Future<void> deleteProduct(int id) async {

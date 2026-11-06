@@ -1,3 +1,4 @@
+import 'package:coffee_shop/core/config.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/app_colors.dart';
@@ -360,7 +361,7 @@ class _TableDetailScreenState extends State<TableDetailScreen> {
             ],
           ),
           Text(
-            '\$${_total.toStringAsFixed(2)}',
+            AppConfig.money(_total),
             style: const TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w800,
@@ -478,7 +479,7 @@ class _RoundCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '\$${it.totalPrice.toStringAsFixed(2)}',
+                      AppConfig.money(it.totalPrice),
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -500,7 +501,7 @@ class _RoundCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Round total: \$${round.subtotal.toStringAsFixed(2)}',
+                  'Round total: ${AppConfig.money(round.subtotal)}',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,

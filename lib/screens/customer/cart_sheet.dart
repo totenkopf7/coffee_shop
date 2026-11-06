@@ -1,4 +1,5 @@
 // screens\customer\cart_sheet.dart
+import 'package:coffee_shop/core/config.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
@@ -200,7 +201,7 @@ class _CartSheetState extends State<CartSheet> {
                   ),
                 ),
                 Text(
-                  '\$${_total.toStringAsFixed(2)}',
+                  AppConfig.money(_total),
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
@@ -303,7 +304,7 @@ class _CartRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '\$${item.product.price.toStringAsFixed(2)} each',
+                  AppConfig.money(item.product.price),
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
