@@ -1,8 +1,9 @@
-// screens\customer\order_status_screen.dart
-import 'package:coffee_shop/core/config.dart';
+// screens/customer/order_status_screen.dart
 import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
+import '../../core/app_localizations.dart';
+import '../../core/config.dart';
 import '../../models/coffee_table.dart';
 import '../../models/order_with_items.dart';
 import '../../models/table_session.dart';
@@ -122,26 +123,31 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   Future<void> _requestCheck() async {
     final s = _liveSession;
     if (s == null || !s.isOpen) return;
+    if (_requestingCheck) return;
 
+    final t = AppLocalizations.t(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
         ),
-        title: const Text('Request the check?'),
-        content: const Text(
-          'A staff member will bring your bill. '
-          'You can still order more until the staff closes your table.',
-        ),
+        title: Text(t.requestCheckTitle),
+        content: Text(t.requestCheckBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(t.cancel),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.espresso,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Request Check'),
+            child: Text(t.requestCheck),
           ),
         ],
       ),
@@ -152,11 +158,12 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
     try {
       await _service.requestCheck(s.id);
       if (!mounted) return;
+      final updated = await _service.getSessionById(s.id);
+      if (!mounted) return;
+      if (updated != null) setState(() => _liveSession = updated);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'We have notified the staff. Someone will bring your check.',
-          ),
+        SnackBar(
+          content: Text(AppLocalizations.t(context).checkRequestedSnack),
         ),
       );
     } catch (e) {
@@ -289,6 +296,49 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
   }
 
   Widget _buildBottomBar(bool isCheck, bool canOrderMore) {
+    final t = AppLocalizations.t(context);
+
+    ButtonStyle solidButtonStyle({
+      required Color background,
+      required Color disabledBackground,
+    }) {
+      return ButtonStyle(
+        backgroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) {
+            return disabledBackground;
+          }
+          return background;
+        }),
+        foregroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) {
+            return Colors.white70;
+          }
+          return Colors.white;
+        }),
+        iconColor: MaterialStateProperty.all(Colors.white),
+        overlayColor: MaterialStateProperty.all(
+          Colors.white.withOpacity(0.12),
+        ),
+        elevation: MaterialStateProperty.all(0),
+        shadowColor: MaterialStateProperty.all(Colors.transparent),
+        surfaceTintColor: MaterialStateProperty.all(Colors.transparent),
+        padding: MaterialStateProperty.all(
+          const EdgeInsets.symmetric(horizontal: 12),
+        ),
+        shape: MaterialStateProperty.all(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        textStyle: MaterialStateProperty.all(
+          const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: const BoxDecoration(
@@ -304,82 +354,73 @@ class _OrderStatusScreenState extends State<OrderStatusScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Running total',
-                  style: TextStyle(
+                Text(
+                  t.runningTotal,
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary,
                   ),
                 ),
-                Text(
-                  AppConfig.money(_total),
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.espresso,
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(
+                    AppConfig.money(_total),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.espresso,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  side: const BorderSide(
-                    color: AppColors.coffee,
-                    width: 1.4,
-                  ),
-                ),
-                icon: const Icon(Icons.add),
-                label: const Text(
-                  'Order more items',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      style: solidButtonStyle(
+                        background: AppColors.espresso,
+                        disabledBackground: AppColors.latte,
+                      ),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: Text(t.orderMore),
+                      onPressed: canOrderMore ? _orderMore : null,
+                    ),
                   ),
                 ),
-                onPressed: _orderMore,
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isCheck ? AppColors.latte : AppColors.espresso,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      style: solidButtonStyle(
+                        background: AppColors.coffee,
+                        disabledBackground: AppColors.latte,
+                      ),
+                      icon: _requestingCheck
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.receipt_long, size: 18),
+                      label: Text(
+                        isCheck ? 'Check requested' : t.requestCheck,
+                      ),
+                      onPressed: isCheck || _requestingCheck || !canOrderMore
+                          ? null
+                          : _requestCheck,
+                    ),
                   ),
                 ),
-                icon: _requestingCheck
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.receipt_long),
-                label: Text(
-                  isCheck ? 'Check requested' : 'Request the check',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-                onPressed: isCheck || _requestingCheck || !canOrderMore
-                    ? null
-                    : _requestCheck,
-              ),
+              ],
             ),
           ],
         ),
@@ -474,11 +515,14 @@ class _RoundBlock extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Text(
-                    AppConfig.money(it.totalPrice),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.espresso,
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      AppConfig.money(it.totalPrice),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.espresso,
+                      ),
                     ),
                   ),
                 ],
@@ -496,12 +540,15 @@ class _RoundBlock extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
-              Text(
-                AppConfig.money(round.subtotal),
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.espresso,
+              Directionality(
+                textDirection: TextDirection.ltr,
+                child: Text(
+                  AppConfig.money(round.subtotal),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.espresso,
+                  ),
                 ),
               ),
             ],

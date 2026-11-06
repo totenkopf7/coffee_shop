@@ -1,7 +1,9 @@
 // lib/widgets/table_card.dart
+import 'dart:math' as math;
+
 import 'package:coffee_shop/core/config.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+
 import '../core/app_colors.dart';
 import '../models/coffee_table.dart';
 
@@ -81,185 +83,193 @@ class TableCard extends StatelessWidget {
 
   bool get _isTableOpen => state != TableVisualState.closed;
 
-  /// Big lamp image, centered above the table number.
-  Widget _lamp() {
-    return Image.asset(
-      _isTableOpen ? 'assets/images/lamp_on.png' : 'assets/images/lamp_off.png',
-      width: 100,
-      height: 100,
-      fit: BoxFit.contain,
-      filterQuality: FilterQuality.medium,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: _bg,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Stack(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: _accent, width: 1.6),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // ── Top row: state icon + label ─────────────────────
-                  Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        final base = math.min(w, h);
+
+        // ── Sizes scale from the smaller cell dimension ───────────
+        // LAMP is the hero element: ~44% of base, clamped 56–120 px.
+        final pad = (base * 0.06).clamp(4.0, 12.0);
+        final lampSize = (base * 0.44).clamp(56.0, 120.0);
+
+        // Table number stays prominent below the lamp.
+        final numberSize = (base * 0.24).clamp(20.0, 40.0);
+        final tableLabelSize = (base * 0.06).clamp(7.0, 10.0);
+
+        // Top and bottom rows scale but stay small so lamp has room.
+        final labelSize = (base * 0.085).clamp(8.0, 12.0);
+        final labelIcon = (base * 0.14).clamp(12.0, 18.0);
+        final footTextSize = (base * 0.09).clamp(8.0, 12.0);
+        final hintSize = (base * 0.09).clamp(8.0, 11.0);
+
+        return Material(
+          color: _bg,
+          borderRadius: BorderRadius.circular(18),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: onTap,
+            child: Stack(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(pad),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: _accent, width: 1.6),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Icon(_icon, size: 18, color: _accent),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          _label,
-                          style: TextStyle(
-                            color: _accent,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const Spacer(),
-
-                  // ── Center: big lamp + table number below ──────────
-                  Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _lamp(),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${table.tableNumber}',
-                          style: TextStyle(
-                            fontSize: 34,
-                            height: 1,
-                            fontWeight: FontWeight.w800,
-                            color: _accent,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'TABLE',
-                          style: TextStyle(
-                            fontSize: 9,
-                            letterSpacing: 1.2,
-                            color: _accent.withOpacity(0.8),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const Spacer(),
-
-                  // ── Bottom row: item count + total (or hint) ───────
-                  if (orderCount > 0)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _accent.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '$orderCount',
-                            style: TextStyle(
-                              color: _accent,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
+                      // ── Top row: state icon + label (compact) ───
+                      Row(
+                        children: [
+                          Icon(_icon, size: labelIcon, color: _accent),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              _label,
+                              style: TextStyle(
+                                color: _accent,
+                                fontSize: labelSize,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ),
-                        MoneyTextOrFallback(
-                          value: runningTotal,
-                          style: TextStyle(
-                            color: _accent,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                        ],
+                      ),
+
+                      // ── Center: BIG lamp + table number below ───
+                      Expanded(
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.asset(
+                                _isTableOpen
+                                    ? 'assets/images/lamp_on.png'
+                                    : 'assets/images/lamp_off.png',
+                                width: lampSize,
+                                height: lampSize,
+                                fit: BoxFit.contain,
+                                filterQuality: FilterQuality.medium,
+                              ),
+                              SizedBox(height: lampSize * 0.04),
+                              Text(
+                                '${table.tableNumber}',
+                                style: TextStyle(
+                                  fontSize: numberSize,
+                                  height: 1,
+                                  fontWeight: FontWeight.w800,
+                                  color: _accent,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'TABLE',
+                                style: TextStyle(
+                                  fontSize: tableLabelSize,
+                                  letterSpacing: 1.2,
+                                  color: _accent.withOpacity(0.8),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    )
-                  else
-                    Center(
-                      child: Text(
-                        state == TableVisualState.closed
-                            ? 'Tap to open'
-                            : 'Waiting...',
+                      ),
+
+                      // ── Bottom row: items + price OR hint ──────
+                      if (orderCount > 0)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: (base * 0.04).clamp(3.0, 6.0),
+                                vertical: (base * 0.015).clamp(1.0, 3.0),
+                              ),
+                              decoration: BoxDecoration(
+                                color: _accent.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '$orderCount',
+                                style: TextStyle(
+                                  color: _accent,
+                                  fontSize: footTextSize,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Flexible(
+                              child: Directionality(
+                                textDirection: TextDirection.ltr,
+                                child: Text(
+                                  AppConfig.money(runningTotal),
+                                  style: TextStyle(
+                                    color: _accent,
+                                    fontSize: footTextSize,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        Center(
+                          child: Text(
+                            state == TableVisualState.closed
+                                ? 'Tap to open'
+                                : 'Waiting...',
+                            style: TextStyle(
+                              color: _accent.withOpacity(0.7),
+                              fontSize: hintSize,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // ── Top-right: NEW badge (small, over the card) ────
+                if (hasNewOrder)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.danger,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text(
+                        'NEW',
                         style: TextStyle(
-                          color: _accent.withOpacity(0.7),
-                          fontSize: 11,
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
-
-            // ── Top-right: NEW badge only (lamp is now in the center) ──
-            if (hasNewOrder)
-              Positioned(
-                top: 6,
-                right: 6,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.danger,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text(
-                    'NEW',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Tiny local helper — mirrors MoneyText's LTR wrapping but keeps the
-/// widget self-contained (no extra import needed elsewhere).
-class MoneyTextOrFallback extends StatelessWidget {
-  final num value;
-  final TextStyle? style;
-  const MoneyTextOrFallback({super.key, required this.value, this.style});
-
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: Text(
-        AppConfig.money(value),
-        style: style,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
+          ),
+        );
+      },
     );
   }
 }

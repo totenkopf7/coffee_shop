@@ -162,7 +162,6 @@ class _TablesDashboardState extends State<TablesDashboard> {
         continue;
       }
 
-      // Look up the session BEFORE using it. If we can't find one, skip.
       final session = _sessionById(o.sessionId!);
       if (session == null) continue;
 
@@ -403,14 +402,27 @@ class _TablesDashboardState extends State<TablesDashboard> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
+          // ── Drawer header with logo ──────────────────────────────
           Container(
             padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
             color: AppColors.espresso,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('☕', style: TextStyle(fontSize: 36)),
-                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.asset(
+                    'assets/images/coffeeshop_logo.png',
+                    width: 180,
+                    height: 180,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Text(
+                      '☕',
+                      style: TextStyle(fontSize: 36),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Text(
                   t.appTitle,
                   style: const TextStyle(
@@ -514,10 +526,10 @@ class _TablesDashboardState extends State<TablesDashboard> {
           child: GridView.builder(
             padding: const EdgeInsets.all(14),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
+              crossAxisCount: 3,
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
-              childAspectRatio: 1.5,
+              childAspectRatio: 1.8,
             ),
             itemCount: _tables.length,
             itemBuilder: (_, i) {

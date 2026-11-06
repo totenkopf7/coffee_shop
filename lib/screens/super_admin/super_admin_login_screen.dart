@@ -89,11 +89,21 @@ class _SuperAdminLoginScreenState extends State<SuperAdminLoginScreen> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Center(
-                            child: Icon(
-                              Icons.admin_panel_settings,
-                              size: 52,
-                              color: AppColors.espresso,
+                          // ── Brand logo ───────────────────────────
+                          Center(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: Image.asset(
+                                'assets/images/coffeeshop_logo.png',
+                                width: 200,
+                                height: 200,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.admin_panel_settings,
+                                  size: 52,
+                                  color: AppColors.espresso,
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 8),

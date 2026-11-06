@@ -1,4 +1,4 @@
-// screens\customer\cart_sheet.dart
+// screens/customer/cart_sheet.dart
 import 'package:coffee_shop/core/config.dart';
 import 'package:flutter/material.dart';
 
@@ -6,24 +6,23 @@ import '../../core/app_colors.dart';
 import '../../models/cart_item.dart';
 import '../../models/product.dart';
 
-/// Self-contained cart editor.
-///
-/// The PARENT is responsible for giving this widget an explicit height
-/// (typically `MediaQuery.of(context).size.height * 0.9` inside a
-/// `showModalBottomSheet(isScrollControlled: true)`). This widget then
-/// uses a [Column] with [Expanded] in the middle and a fixed bottom bar,
-/// which is the only layout that guarantees the "Place Order" button is
-/// always visible regardless of viewport size.
 class CartSheet extends StatefulWidget {
   final List<CartItem> initialCart;
   final void Function(List<CartItem>) onCartChanged;
   final Future<void> Function() onCheckout;
+
+  /// Kept for API compatibility with the previous version — not used
+  /// here anymore. Request Check now lives on the Order Status screen.
+  final String sessionId;
+  final VoidCallback? onCheckRequested;
 
   const CartSheet({
     super.key,
     required this.initialCart,
     required this.onCartChanged,
     required this.onCheckout,
+    required this.sessionId,
+    this.onCheckRequested,
   });
 
   @override
@@ -76,6 +75,11 @@ class _CartSheetState extends State<CartSheet> {
     }
   }
 
+  /// Closes the cart sheet, cart is preserved on the parent side.
+  void _addMore() {
+    Navigator.of(context).maybePop();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -87,11 +91,6 @@ class _CartSheetState extends State<CartSheet> {
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
-          // IMPORTANT: this Column is inside a SizedBox with an explicit
-          // height (set by the caller). It must NOT be `min` — it must
-          // take the full height so Expanded can hand the middle slot a
-          // real pixel budget. The bottom bar then sits at the very
-          // bottom of that budget, always visible.
           children: [
             // ── Handle ────────────────────────────────────────────────
             const SizedBox(height: 12),
@@ -169,7 +168,7 @@ class _CartSheetState extends State<CartSheet> {
                     ),
             ),
 
-            // ── Bottom bar (Place Order) ──────────────────────────────
+            // ── Bottom bar ────────────────────────────────────────────
             _bottomBar(context),
           ],
         ),
@@ -189,6 +188,7 @@ class _CartSheetState extends State<CartSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // ── Total row ────────────────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -200,17 +200,47 @@ class _CartSheetState extends State<CartSheet> {
                     color: AppColors.textSecondary,
                   ),
                 ),
-                Text(
-                  AppConfig.money(_total),
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.espresso,
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(
+                    AppConfig.money(_total),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.espresso,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
+
+            // ── Add More (full width, above Place Order) ────────────
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.espresso,
+                  side: const BorderSide(color: AppColors.espresso, width: 1.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text(
+                  'Add More',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                onPressed: _submitting ? null : _addMore,
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // ── Place Order (unchanged) ──────────────────────────────
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -303,11 +333,14 @@ class _CartRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  AppConfig.money(item.product.price),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Text(
+                    AppConfig.money(item.product.price),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
               ],

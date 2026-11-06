@@ -88,10 +88,23 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Center(
-                            child: Text('☕', style: TextStyle(fontSize: 52)),
+                          // ── Brand logo ───────────────────────────
+                          Center(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: Image.asset(
+                                'assets/images/coffeeshop_logo.png',
+                                width: 200,
+                                height: 200,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Text(
+                                  '☕',
+                                  style: TextStyle(fontSize: 52),
+                                ),
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 4),
                           Center(
                             child: Text(
                               t.staffConsole,

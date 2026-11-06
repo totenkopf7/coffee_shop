@@ -54,8 +54,21 @@ class _EmployeeSplashScreenState extends State<EmployeeSplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('☕', style: TextStyle(fontSize: 76)),
-            const SizedBox(height: 12),
+            // ── Brand logo ─────────────────────────────────────────
+            ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: Image.asset(
+                'assets/images/coffeeshop_logo.png',
+                width: 200,
+                height: 200,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Text(
+                  '☕',
+                  style: TextStyle(fontSize: 76),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
               t.appTitle,
               style: const TextStyle(

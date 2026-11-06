@@ -198,6 +198,7 @@ class _CustomerMenuScreenState extends State<CustomerMenuScreen> {
         height: sheetHeight,
         child: CartSheet(
           initialCart: List<CartItem>.from(_cart),
+          sessionId: widget.session.id,
           onCartChanged: (next) {
             _cartDirty = true;
             _cart = List<CartItem>.from(next);
@@ -205,6 +206,11 @@ class _CustomerMenuScreenState extends State<CustomerMenuScreen> {
           },
           onCheckout: () async {
             await _placeOrderFromSheet(sheetContext);
+          },
+          onCheckRequested: () async {
+            final s = await _service.getSessionById(widget.session.id);
+            if (!mounted) return;
+            if (s != null) setState(() => _liveSession = s);
           },
         ),
       ),
@@ -503,13 +509,14 @@ class _CustomerMenuScreenState extends State<CustomerMenuScreen> {
                   ),
                 ),
               ),
+              // ── Centered, top-aligned header content ─────────────
               SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 56),
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 56),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Container(
                         width: 52,
@@ -525,23 +532,25 @@ class _CustomerMenuScreenState extends State<CustomerMenuScreen> {
                         ),
                         child: const Text('☕', style: TextStyle(fontSize: 26)),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       Text(
                         t.ourMenu,
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Color(0xFFF5E9D7),
-                          fontSize: 34,
+                          fontSize: 32,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.4,
                           height: 1.05,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         t.menuTagline,
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           color: const Color(0xFFF5E9D7).withOpacity(0.75),
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: FontWeight.w400,
                           letterSpacing: 0.2,
                         ),
@@ -792,72 +801,39 @@ class _CustomerMenuScreenState extends State<CustomerMenuScreen> {
                 ),
               ),
             ),
-          if (showCartBar && !isCheck) const SizedBox(height: 12),
+          if (showCartBar && !isCheck) const SizedBox(height: 10),
           if (!isCheck)
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 50,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.espresso,
-                        side: const BorderSide(
-                            color: AppColors.espresso, width: 1.4),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.espresso,
+                  side: const BorderSide(color: AppColors.espresso, width: 1.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  backgroundColor: const Color(0xFFFFFDF9),
+                ),
+                icon: _requestingCheck
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.espresso,
                         ),
-                        backgroundColor: const Color(0xFFFFFDF9),
-                      ),
-                      icon: _requestingCheck
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.espresso,
-                              ),
-                            )
-                          : const Icon(Icons.receipt_long, size: 18),
-                      label: Text(
-                        t.requestCheck,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                      onPressed: _requestingCheck ? null : _requestCheck,
-                    ),
+                      )
+                    : const Icon(Icons.receipt_long, size: 18),
+                label: Text(
+                  t.requestCheck,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
                   ),
                 ),
-                if (showCartBar) const SizedBox(width: 10),
-                if (showCartBar)
-                  Expanded(
-                    child: SizedBox(
-                      height: 50,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.espresso,
-                          side: const BorderSide(
-                              color: AppColors.espresso, width: 1.4),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          backgroundColor: const Color(0xFFFFFDF9),
-                        ),
-                        icon: const Icon(Icons.list_alt, size: 18),
-                        label: Text(
-                          t.orderMore,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
-                        onPressed: () => _openStatus(),
-                      ),
-                    ),
-                  ),
-              ],
+                onPressed: _requestingCheck ? null : _requestCheck,
+              ),
             ),
         ],
       ),
