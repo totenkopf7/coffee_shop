@@ -1,4 +1,4 @@
-// widgets/table_card.dart
+// lib/widgets/table_card.dart
 import 'package:coffee_shop/core/config.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -79,6 +79,19 @@ class TableCard extends StatelessWidget {
     }
   }
 
+  bool get _isTableOpen => state != TableVisualState.closed;
+
+  /// Big lamp image, centered above the table number.
+  Widget _lamp() {
+    return Image.asset(
+      _isTableOpen ? 'assets/images/lamp_on.png' : 'assets/images/lamp_off.png',
+      width: 100,
+      height: 100,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -98,6 +111,7 @@ class TableCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // ── Top row: state icon + label ─────────────────────
                   Row(
                     children: [
                       Icon(_icon, size: 18, color: _accent),
@@ -117,11 +131,16 @@ class TableCard extends StatelessWidget {
                       ),
                     ],
                   ),
+
                   const Spacer(),
+
+                  // ── Center: big lamp + table number below ──────────
                   Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        _lamp(),
+                        const SizedBox(height: 4),
                         Text(
                           '${table.tableNumber}',
                           style: TextStyle(
@@ -144,7 +163,10 @@ class TableCard extends StatelessWidget {
                       ],
                     ),
                   ),
+
                   const Spacer(),
+
+                  // ── Bottom row: item count + total (or hint) ───────
                   if (orderCount > 0)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -165,8 +187,8 @@ class TableCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        Text(
-                          AppConfig.money(runningTotal),
+                        MoneyTextOrFallback(
+                          value: runningTotal,
                           style: TextStyle(
                             color: _accent,
                             fontSize: 12,
@@ -190,6 +212,8 @@ class TableCard extends StatelessWidget {
                 ],
               ),
             ),
+
+            // ── Top-right: NEW badge only (lamp is now in the center) ──
             if (hasNewOrder)
               Positioned(
                 top: 6,
@@ -214,6 +238,27 @@ class TableCard extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Tiny local helper — mirrors MoneyText's LTR wrapping but keeps the
+/// widget self-contained (no extra import needed elsewhere).
+class MoneyTextOrFallback extends StatelessWidget {
+  final num value;
+  final TextStyle? style;
+  const MoneyTextOrFallback({super.key, required this.value, this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Text(
+        AppConfig.money(value),
+        style: style,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

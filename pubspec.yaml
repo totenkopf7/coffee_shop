@@ -36,6 +36,8 @@ flutter:
   assets:
     - assets/images/background.png
     - assets/images/table.png
+    - assets/images/lamp_on.png
+    - assets/images/lamp_off.png
     - assets/animations/loading.json
     - assets/sounds/new_order.mp3
     - assets/sounds/check.mp3
