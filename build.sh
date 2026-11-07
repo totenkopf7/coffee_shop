@@ -2,7 +2,7 @@
 set -e
 
 # Pin to a Flutter version where flutter_localizations allows web >=0.5.1
-FLUTTER_VERSION="3.24.0"
+FLUTTER_VERSION="3.27.0"
 FLUTTER_SDK_PATH="$HOME/flutter"
 
 if [ ! -d "$FLUTTER_SDK_PATH" ]; then
