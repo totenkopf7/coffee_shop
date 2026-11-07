@@ -1,4 +1,5 @@
 // screens/employee/employee_login_screen.dart
+import 'package:coffee_shop/services/sound_service.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_colors.dart';
@@ -29,6 +30,18 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Fire-and-forget: preload the sound assets in the background so
+    // the first alert after login is instantaneous. Harmless if it fails.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Do NOT await — this is just a warm-up.
+      // ignore: unawaited_futures
+      SoundService.instance.init();
+    });
   }
 
   Future<void> _submit() async {

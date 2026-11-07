@@ -1,16 +1,18 @@
 // services/sound_service.dart
-import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:just_audio/just_audio.dart';
 
 import '../core/constants.dart';
 
-/// Plays alert sounds on the employee dashboard:
-///   • assets/sounds/new_order.mp3 → a customer placed a new order
-///   • assets/sounds/check.mp3     → a customer requested the check
+/// Reliable cross-platform alert sounds using `just_audio`.
 ///
-/// Two independent [AudioPlayer]s so a check alert can overlap a new-order
-/// alert. Debounced (2 s per event type) so a burst of realtime events
-/// triggers exactly one sound.
+/// Two independent players (one per sound) so a check alert can overlap
+/// a new-order alert. Each player loads its file once at app start;
+/// replay is `seekTo(0) + play()`.
+///
+/// Format: WAV (PCM) — decoded natively everywhere.
 class SoundService {
   SoundService._();
   static final SoundService instance = SoundService._();
@@ -18,88 +20,66 @@ class SoundService {
   final AudioPlayer _checkPlayer = AudioPlayer();
   final AudioPlayer _orderPlayer = AudioPlayer();
 
-  DateTime _lastCheck = DateTime.fromMillisecondsSinceEpoch(0);
-  DateTime _lastOrder = DateTime.fromMillisecondsSinceEpoch(0);
-
-  static const Duration _debounce = Duration(seconds: 2);
-
   bool _initialized = false;
 
-  /// Call once at app startup. Safe to call multiple times.
+  DateTime _lastCheck = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _lastOrder = DateTime.fromMillisecondsSinceEpoch(0);
+  static const Duration _debounce = Duration(seconds: 2);
+
+  /// Load both assets once. Safe to call repeatedly.
   ///
-  /// Sets the OS audio session to "playback" (Android/iOS) so the alert
-  /// plays even when the phone is on silent mode. On web this is a no-op.
+  /// `just_audio` (0.4.0+) automatically configures the audio session
+  /// to `playback` category by default, so alerts play even when the
+  /// phone is on silent mode. No manual session setup needed.
   Future<void> init() async {
     if (_initialized) return;
     try {
-      // Global context: play as music/alert, not as a ringtone/interruption.
-      await AudioPlayer.global.setAudioContext(
-        AudioContext(
-          android: AudioContextAndroid(
-            isSpeakerphoneOn: true,
-            audioMode: AndroidAudioMode.normal,
-            stayAwake: false,
-            contentType: AndroidContentType.sonification,
-            usageType: AndroidUsageType.notification,
-            audioFocus: AndroidAudioFocus.gainTransientMayDuck,
-          ),
-          iOS: AudioContextIOS(
-            category: AVAudioSessionCategory.playback,
-            options: const [AVAudioSessionOptions.mixWithOthers],
-          ),
-        ),
-      );
+      await _checkPlayer.setLoopMode(LoopMode.off);
+      await _orderPlayer.setLoopMode(LoopMode.off);
+      await _checkPlayer.setVolume(1.0);
+      await _orderPlayer.setVolume(1.0);
+
+      await Future.wait([
+        _checkPlayer.setAsset(AppConstants.checkRequestSound),
+        _orderPlayer.setAsset(AppConstants.newOrderSound),
+      ]);
+
       _initialized = true;
-      debugPrint('SoundService: initialized');
+      debugPrint('SoundService: initialized and preloaded');
     } catch (e) {
-      debugPrint('SoundService: init error (non-fatal): $e');
+      debugPrint('SoundService: init error → $e');
+      debugPrint(
+        'SoundService: check that pubspec.yaml declares '
+        '"${AppConstants.checkRequestSound}" and '
+        '"${AppConstants.newOrderSound}", and that those files exist.',
+      );
     }
   }
 
-  Future<void> _play(
-    AudioPlayer player,
-    DateTime last,
-    String asset,
-  ) async {
-    if (DateTime.now().difference(last) < _debounce) {
-      debugPrint('SoundService: skipped (debounced) → $asset');
-      return;
-    }
-
-    // AudioPlayer resolves asset paths relative to `assets/`, so we must
-    // strip the leading `assets/`.
-    final relativePath =
-        asset.startsWith('assets/') ? asset.substring('assets/'.length) : asset;
-
+  Future<void> _replay(AudioPlayer player) async {
     try {
       await player.stop();
-      await player.setReleaseMode(ReleaseMode.stop);
-
-      // setSourceAsset is more reliable than play(AssetSource(...)) on web,
-      // iOS, and macOS. Then resume() starts playback.
-      await player.setSourceAsset(relativePath);
-      await player.resume();
-
-      debugPrint('SoundService: played → $relativePath');
+      await player.seek(Duration.zero);
+      unawaited(player.play());
     } catch (e) {
-      debugPrint('SoundService: FAILED to play "$asset": $e');
-      debugPrint(
-        'SoundService: check that pubspec.yaml declares "$asset" '
-        'and that the file exists on disk.',
-      );
+      debugPrint('SoundService: replay error → $e');
     }
   }
 
   Future<void> playCheckRequest() async {
+    if (!_initialized) await init();
     if (DateTime.now().difference(_lastCheck) < _debounce) return;
     _lastCheck = DateTime.now();
-    await _play(_checkPlayer, _lastCheck, AppConstants.checkRequestSound);
+    debugPrint('SoundService: playing ${AppConstants.checkRequestSound}');
+    await _replay(_checkPlayer);
   }
 
   Future<void> playNewOrder() async {
+    if (!_initialized) await init();
     if (DateTime.now().difference(_lastOrder) < _debounce) return;
     _lastOrder = DateTime.now();
-    await _play(_orderPlayer, _lastOrder, AppConstants.newOrderSound);
+    debugPrint('SoundService: playing ${AppConstants.newOrderSound}');
+    await _replay(_orderPlayer);
   }
 
   Future<void> dispose() async {

@@ -16,8 +16,8 @@ class AppConstants {
 
   /// Paths as declared in pubspec.yaml (keep the `assets/` prefix — the
   /// SoundService strips it for `AudioPlayer` at play time).
-  static const String checkRequestSound = 'assets/sounds/check.mp3';
-  static const String newOrderSound = 'assets/sounds/new_order.mp3';
+  static const String checkRequestSound = 'assets/sounds/check.wav';
+  static const String newOrderSound = 'assets/sounds/new_order.wav';
 
   static const String tableStatusAvailable = 'available';
   static const String tableStatusOccupied = 'occupied';

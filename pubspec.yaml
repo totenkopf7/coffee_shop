@@ -19,9 +19,10 @@ dependencies:
   http: ^1.1.0
   pdf: ^3.10.4
   printing: ^5.11.1
-  audioplayers: ^5.2.1
+  # audioplayers: ^5.2.1
   google_fonts: 6.1.0
   mobile_scanner: ^4.0.1
+  just_audio: ^0.9.36
 
   flutter_localizations:
     sdk: flutter
@@ -42,8 +43,8 @@ flutter:
     - assets/images/lamp_off.png
     - assets/images/coffeeshop_logo.png
     - assets/animations/loading.json
-    - assets/sounds/new_order.mp3
-    - assets/sounds/check.mp3
+    - assets/sounds/new_order.wav
+    - assets/sounds/check.wav
 
 flutter_launcher_icons:
   android: true
