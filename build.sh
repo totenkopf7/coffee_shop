@@ -16,4 +16,4 @@ export PATH="$FLUTTER_SDK_PATH/bin:$PATH"
 
 flutter --version
 flutter pub get
-flutter build web --release
+flutter build web --releaseyh

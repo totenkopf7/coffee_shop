@@ -41,7 +41,6 @@ class _CustomerMenuScreenState extends State<CustomerMenuScreen> {
   String _selectedCategory = 'All';
   TableSession? _liveSession;
   bool _placingOrder = false;
-  bool _requestingCheck = false;
 
   bool _cartDirty = false;
   Future<void>? _persistInFlight;
@@ -278,57 +277,6 @@ class _CustomerMenuScreenState extends State<CustomerMenuScreen> {
     );
   }
 
-  Future<void> _requestCheck() async {
-    final s = _liveSession;
-    if (s == null) return;
-    if (!s.isOpen) {
-      _showSnack('The check has already been requested.');
-      return;
-    }
-    if (_requestingCheck) return;
-
-    final t = AppLocalizations.t(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
-        ),
-        title: Text(t.requestCheckTitle),
-        content: Text(t.requestCheckBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(t.cancel),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.espresso,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(t.requestCheck),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    setState(() => _requestingCheck = true);
-    try {
-      await _service.requestCheck(s.id);
-      if (!mounted) return;
-      _showSnack(t.checkRequestedSnack);
-    } catch (e) {
-      if (!mounted) return;
-      _showSnack('Failed to request check: $e');
-    } finally {
-      if (mounted) setState(() => _requestingCheck = false);
-    }
-  }
-
   void _viewImage(Product product) {
     final url = product.imageUrl;
     if (url == null || url.trim().isEmpty) return;
@@ -405,7 +353,7 @@ class _CustomerMenuScreenState extends State<CustomerMenuScreen> {
                   16,
                   4,
                   16,
-                  showBottomActions ? 160 : 24,
+                  showBottomActions ? 120 : 24,
                 ),
                 sliver: SliverList.separated(
                   itemCount: _filtered.length,
@@ -426,9 +374,8 @@ class _CustomerMenuScreenState extends State<CustomerMenuScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: showBottomActions
-          ? _buildBottomActions(t, showCartBar, isCheck)
-          : null,
+      bottomNavigationBar:
+          showBottomActions ? _buildBottomActions(t, showCartBar) : null,
     );
   }
 
@@ -722,8 +669,12 @@ class _CustomerMenuScreenState extends State<CustomerMenuScreen> {
     );
   }
 
-  Widget _buildBottomActions(
-      AppLocalizations t, bool showCartBar, bool isCheck) {
+  /// Bottom action bar.
+  ///
+  /// Shows ONLY the "View Cart" bar when items are in the cart. The
+  /// "Request check" button has been removed from this screen — it now
+  /// lives exclusively on the order status screen.
+  Widget _buildBottomActions(AppLocalizations t, bool showCartBar) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
     return Container(
       padding: EdgeInsets.only(
@@ -799,40 +750,6 @@ class _CustomerMenuScreenState extends State<CustomerMenuScreen> {
                     ),
                   ],
                 ),
-              ),
-            ),
-          if (showCartBar && !isCheck) const SizedBox(height: 10),
-          if (!isCheck)
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.espresso,
-                  side: const BorderSide(color: AppColors.espresso, width: 1.4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  backgroundColor: const Color(0xFFFFFDF9),
-                ),
-                icon: _requestingCheck
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.espresso,
-                        ),
-                      )
-                    : const Icon(Icons.receipt_long, size: 18),
-                label: Text(
-                  t.requestCheck,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
-                onPressed: _requestingCheck ? null : _requestCheck,
               ),
             ),
         ],
